@@ -20,7 +20,7 @@ function renderStory(container, data) {
   const head = makeEl("div", "story-head");
   const heading = makeEl("h2", "story-heading");
   heading.id = "story-heading";
-  heading.append(makeEl("span", "ai-badge", "✦ AI"), "AI Story");
+  heading.append(makeEl("span", "ai-badge", "✦"), "AI Story");
 
   const toggle = makeEl("div", "lang-toggle");
   toggle.setAttribute("role", "group");

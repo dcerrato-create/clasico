@@ -128,6 +128,7 @@ function renderRivalry(data) {
   renderReveal(dom.result, data); // flags + headline (handles "never met" too)
   if (data.summary.total_matches > 0) {
     renderStory(dom.result, data);
+    renderExplore(dom.result, data, state.categories);
   }
   dom.result.scrollIntoView({ behavior: "smooth", block: "start" });
 }
