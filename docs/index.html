@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Clásico · National-team rivalry explorer</title>
+  <meta name="description" content="Pick two national teams and explore their whole rivalry: the record, the story, and every match on a timeline.">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⚽</text></svg>">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="site-header">
+    <a class="logo" href="./index.html">CL<span>Á</span>SICO</a>
+    <p class="tagline">Every national-team rivalry, match by match.</p>
+  </header>
+
+  <main>
+    <!-- Shown only when the backend can't be reached -->
+    <div id="server-banner" class="banner" role="alert" hidden>
+      <p id="server-banner-text"></p>
+      <button type="button" id="server-retry" class="secondary">Try again</button>
+    </div>
+
+    <!-- 1. Team picker -->
+    <section class="card picker-card" aria-label="Pick two teams">
+      <form id="picker-form" novalidate>
+        <div class="picker-row">
+          <div class="picker picker-a">
+            <label for="team-a">Team A</label>
+            <div class="combo" id="combo-a">
+              <span class="combo-flag"></span>
+              <input id="team-a" type="text" placeholder="Search a team…" autocomplete="off"
+                     role="combobox" aria-expanded="false" aria-controls="list-a">
+              <ul class="combo-list" id="list-a" role="listbox" hidden></ul>
+            </div>
+          </div>
+          <span class="vs" aria-hidden="true">VS</span>
+          <div class="picker picker-b">
+            <label for="team-b">Team B</label>
+            <div class="combo" id="combo-b">
+              <span class="combo-flag"></span>
+              <input id="team-b" type="text" placeholder="Search a team…" autocomplete="off"
+                     role="combobox" aria-expanded="false" aria-controls="list-b">
+              <ul class="combo-list" id="list-b" role="listbox" hidden></ul>
+            </div>
+          </div>
+        </div>
+        <button type="submit" id="go-button" class="primary">Show the rivalry</button>
+        <p id="message" class="message" role="alert" hidden></p>
+      </form>
+    </section>
+
+    <!-- 2-5. The rivalry (filled in after two teams are picked) -->
+    <div id="result" hidden></div>
+
+    <!-- Featured rivalries -->
+    <section aria-labelledby="featured-heading">
+      <h2 id="featured-heading" class="section-heading">Featured rivalries</h2>
+      <div id="featured" class="featured-grid"></div>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <p>
+      Match data:
+      <a href="https://github.com/martj42/international_results" target="_blank" rel="noopener">International football results 1872–today</a>
+      by Mart Jürisoo (martj42).
+      Flags: <a href="https://flagcdn.com" target="_blank" rel="noopener">flagcdn.com</a>.
+    </p>
+  </footer>
+
+  <script src="js/config.js"></script>
+  <script src="js/api.js"></script>
+  <script src="js/flags.js"></script>
+  <script src="js/picker.js"></script>
+  <script src="js/main.js"></script>
+</body>
+</html>
