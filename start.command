@@ -1,16 +1,28 @@
 #!/bin/bash
-# Double-click this file to run Clásico on your own computer.
+# Double-click this file (in Finder) to run Clásico on your own computer.
 # It starts the backend (port 5001) and a tiny web server for the
 # frontend (port 8000), then opens the app in your browser.
 # Close this window (or press Control+C) to stop everything.
 
 cd "$(dirname "$0")"
 
-# First run only: create the Python environment and install the packages.
-if [ ! -x backend/.venv/bin/python ]; then
-  echo "Setting up for the first time (this takes a minute)..."
-  python3 -m venv backend/.venv
-  backend/.venv/bin/pip install --quiet -r backend/requirements.txt
+if ! command -v python3 >/dev/null 2>&1; then
+  echo "Python 3 is not installed on this Mac. Install it, then double-click this file again."
+  read -r -p "Press Return to close."
+  exit 1
+fi
+
+# The Python environment (backend/.venv) belongs to the computer that made it.
+# If it is missing, or was copied from another Mac and doesn't work here,
+# build a fresh one. This needs internet and takes about a minute.
+if ! backend/.venv/bin/python -c "import flask, flask_cors, dotenv, openai" >/dev/null 2>&1; then
+  echo "Setting up Python for this computer (about a minute, needs internet)..."
+  rm -rf backend/.venv
+  if ! python3 -m venv backend/.venv || ! backend/.venv/bin/pip install --quiet -r backend/requirements.txt; then
+    echo "Setup failed. Check the internet connection, then double-click this file again."
+    read -r -p "Press Return to close."
+    exit 1
+  fi
 fi
 
 # Stop anything left over from a previous run.
