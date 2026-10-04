@@ -468,3 +468,86 @@ button:disabled { cursor: not-allowed; opacity: 0.6; }
   .side-a, .side-b, .stage, .clash-vs, .burst { animation: none; }
   .step { transition: none; }
 }
+
+/* ---------- 4. AI Story ---------- */
+
+.story-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.story-heading {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 1.6rem;
+  font-weight: 400;
+  letter-spacing: 0.05em;
+}
+
+.ai-badge {
+  font-family: var(--font-body);
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: #1a1400;
+  background: var(--accent);
+  border-radius: 999px;
+  padding: 3px 9px;
+  white-space: nowrap;
+}
+
+.lang-toggle {
+  display: flex;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  overflow: hidden;
+  flex: none;
+}
+.lang-toggle button {
+  background: transparent;
+  color: var(--muted);
+  border: 0;
+  padding: 8px 16px;
+  min-height: 40px;
+  font-weight: 700;
+}
+.lang-toggle button[aria-pressed="true"] {
+  background: var(--text);
+  color: var(--bg);
+}
+
+.story-text {
+  margin: 0;
+  font-size: 1.05rem;
+  line-height: 1.65;
+  min-height: 5em; /* keeps the card from jumping when the story arrives */
+}
+
+/* "writing…" with three dots that appear one after another */
+.story-text.writing { color: var(--muted); font-style: italic; }
+.story-text.writing::after {
+  content: "…";
+  display: inline-block;
+  overflow: hidden;
+  vertical-align: bottom;
+  width: 0;
+  animation: writing-dots 1.2s steps(4, end) infinite;
+}
+@keyframes writing-dots { to { width: 1.2em; } }
+
+.story-error { color: var(--danger); min-height: 0; }
+.story-error button { margin-left: 6px; }
+
+.story-disclaimer {
+  margin: 14px 0 0;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+  color: var(--muted);
+  font-size: 0.8rem;
+}

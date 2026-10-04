@@ -126,6 +126,9 @@ function renderRivalry(data) {
   dom.result.hidden = false;
   dom.result.replaceChildren();
   renderReveal(dom.result, data); // flags + headline (handles "never met" too)
+  if (data.summary.total_matches > 0) {
+    renderStory(dom.result, data);
+  }
   dom.result.scrollIntoView({ behavior: "smooth", block: "start" });
 }
 

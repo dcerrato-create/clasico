@@ -1,6 +1,6 @@
 """
 app.py - the Flask server. It only defines the web addresses (routes);
-the real work happens in data.py.
+the real work happens in data.py (statistics) and story.py (AI Story).
 
 Run locally:  python app.py   (listens on http://127.0.0.1:5001)
 """
@@ -18,7 +18,9 @@ from werkzeug.exceptions import HTTPException
 load_dotenv(Path(__file__).parent.parent / ".env")
 
 import data  # noqa: E402  (imported after load_dotenv on purpose)
+import story  # noqa: E402
 from config import TOURNAMENT_CATEGORIES  # noqa: E402
+from errors import ApiError  # noqa: E402
 
 app = Flask(__name__)
 app.json.ensure_ascii = False  # keep "Copa América" readable in responses
@@ -31,15 +33,6 @@ CORS(app, origins=[o.strip() for o in allowed_origins.split(",")])
 # ---------------------------------------------------------------------------
 # Errors: every problem is returned as JSON with a readable message
 # ---------------------------------------------------------------------------
-
-class ApiError(Exception):
-    """Raise this anywhere to send {"error": message} with a status code."""
-
-    def __init__(self, message, status=400):
-        super().__init__(message)
-        self.message = message
-        self.status = status
-
 
 @app.errorhandler(ApiError)
 def handle_api_error(err):
@@ -113,6 +106,33 @@ def rivalry():
         "summary": data.summarize(team_a, team_b, matches),
         "matches": matches,
     })
+
+
+@app.post("/api/story")
+def ai_story():
+    """The AI Story paragraph for a matchup.
+
+    Send JSON like {"team_a": "Honduras", "team_b": "El Salvador", "lang": "en"}.
+    The statistics are computed here on the server, so the browser can't
+    make the model write about made-up numbers.
+    """
+    body = request.get_json(silent=True)
+    if not isinstance(body, dict):
+        body = {}
+    team_a, team_b = get_team_pair(body.get("team_a"), body.get("team_b"))
+    # Alphabetical order, so "Brazil vs Argentina" reuses the cached
+    # "Argentina vs Brazil" story.
+    team_a, team_b = sorted([team_a, team_b])
+
+    matches = data.head_to_head(team_a, team_b)
+    if not matches:
+        raise ApiError(f"{team_a} and {team_b} have never played each other, so there is no story to tell.", 404)
+
+    # Behind a host like Render the visitor's address arrives in this header.
+    visitor = request.headers.get("X-Forwarded-For", request.remote_addr or "unknown").split(",")[0].strip()
+    lang = str(body.get("lang", "en")).lower()
+    text, cached = story.get_story(data.summarize(team_a, team_b, matches), lang, visitor)
+    return jsonify({"story": text, "lang": lang, "cached": cached})
 
 
 if __name__ == "__main__":
