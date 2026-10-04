@@ -125,12 +125,8 @@ async function showRivalry() {
 function renderRivalry(data) {
   dom.result.hidden = false;
   dom.result.replaceChildren();
-  if (data.summary.total_matches === 0) {
-    const note = document.createElement("p");
-    note.className = "card never-met";
-    note.textContent = `${data.team_a.name} and ${data.team_b.name} have never played each other.`;
-    dom.result.append(note);
-  }
+  renderReveal(dom.result, data); // flags + headline (handles "never met" too)
+  dom.result.scrollIntoView({ behavior: "smooth", block: "start" });
 }
 
 async function init() {
