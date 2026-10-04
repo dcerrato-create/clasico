@@ -1,0 +1,22 @@
+# Secrets (never commit)
+.env
+
+# Private notes
+prompts_raw.md
+
+# Assignment PDF
+*.pdf
+
+# Python caches and virtual environment
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# AI Story cache (rebuilt automatically)
+backend/cache/
+
+# Editor / OS
+.DS_Store
+.vscode/
+.claude/
