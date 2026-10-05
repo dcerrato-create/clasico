@@ -42,18 +42,33 @@ function scorersText(match, team) {
 }
 
 // Fills the panel under the chart with everything about one match.
-function showMatchDetail(panel, match, colors) {
+// A small colored dot for one match. A match that went to penalties gets a
+// ring in the color of the team that won the shootout (ringColor).
+function makeMatchDot(match, colors, ringColor) {
+  const dot = makeEl("span", "dot");
+  dot.style.background = colors[match.winner];
+  if (ringColor) {
+    dot.classList.add("pens");
+    dot.style.borderColor = ringColor;
+  }
+  return dot;
+}
+
+function showMatchDetail(panel, match, colors, ringColor) {
   panel.replaceChildren();
   panel.classList.remove("empty");
 
   const title = makeEl("p", "detail-score");
-  const dot = makeEl("span", "dot");
-  dot.style.background = colors[match.winner];
-  title.append(dot, scoreLine(match));
+  title.append(makeMatchDot(match, colors, ringColor), scoreLine(match));
   panel.append(title);
 
   if (match.shootout_winner) {
-    panel.append(makeEl("p", "detail-line", `${match.shootout_winner} won the penalty shootout`));
+    // Nearly always the match was a draw. Rarely (a two-legged tie) one team
+    // won this match and a shootout still followed.
+    const text = match.winner === "draw"
+      ? `Draw · ${match.shootout_winner} won on penalties`
+      : `${match.shootout_winner} won the penalty shootout that followed`;
+    panel.append(makeEl("p", "detail-pens", text));
   }
   panel.append(makeEl("p", "detail-line", `${formatDate(match.date)} · ${match.tournament} · ${placeLine(match)}`));
 
@@ -76,7 +91,8 @@ function showMatchDetail(panel, match, colors) {
 }
 
 // Turns the matches into the three groups of dots Chart.js draws.
-function buildDatasets(matches, data, colors) {
+// ringColorOf(match) gives the shootout winner's color, or null.
+function buildDatasets(matches, data, colors, ringColorOf) {
   const smallScreen = window.innerWidth < 600;
   const baseRadius = smallScreen ? 4 : 6;
   const growth = smallScreen ? 1.5 : 2; // extra radius per goal of margin
@@ -96,6 +112,7 @@ function buildDatasets(matches, data, colors) {
       x: decimalYear(match.date),
       y: rows[match.winner] + nudges[group.points.length % nudges.length],
       r: baseRadius + Math.min(match.margin, 6) * growth, // bigger margin, bigger dot
+      ring: ringColorOf(match), // only set for matches that went to penalties
       match,
     });
   }
@@ -104,8 +121,10 @@ function buildDatasets(matches, data, colors) {
     label: groups[key].label,
     data: groups[key].points,
     backgroundColor: colors[key] + "d9", // slightly see-through
-    borderColor: COLORS.surface,          // a thin ring separates overlapping dots
-    borderWidth: 1.5,
+    // Normally a thin dark ring separates overlapping dots. A match that went
+    // to penalties gets a thick ring in the shootout winner's color instead.
+    borderColor: groups[key].points.map((point) => point.ring || COLORS.surface),
+    borderWidth: groups[key].points.map((point) => (point.ring ? 3 : 1.5)),
     hoverBorderColor: COLORS.text,
     hoverBorderWidth: 2,
   }));
@@ -166,6 +185,19 @@ function renderExplore(container, data, teamColors) {
     const dot = makeEl("span", "dot");
     dot.style.background = colors[key];
     item.append(dot, label);
+    legend.append(item);
+  }
+  // The shootout winner's color, for matches that went to penalties.
+  const ringColorOf = (match) =>
+    match.shootout_winner === data.team_a.name ? colors.a :
+    match.shootout_winner === data.team_b.name ? colors.b : null;
+
+  if (allMatches.some((m) => m.shootout_winner)) {
+    const item = makeEl("span", "legend-item");
+    const dot = makeEl("span", "dot pens");
+    dot.style.background = colors.draw;
+    dot.style.borderColor = COLORS.text;
+    item.append(dot, "Went to penalties (ring color = shootout winner)");
     legend.append(item);
   }
   legend.append(makeEl("span", "legend-note", "Bigger dot = bigger goal margin"));
@@ -239,7 +271,9 @@ function renderExplore(container, data, teamColors) {
               title: (items) => scoreLine(items[0].raw.match),
               label: (item) => {
                 const match = item.raw.match;
-                return [`${formatDate(match.date)} · ${match.tournament}`, placeLine(match)];
+                const lines = [`${formatDate(match.date)} · ${match.tournament}`, placeLine(match)];
+                if (match.shootout_winner) lines.unshift(`${match.shootout_winner} won on penalties`);
+                return lines;
               },
             },
           },
@@ -258,7 +292,7 @@ function renderExplore(container, data, teamColors) {
 
   function showFromElement(element) {
     const point = timelineChart.data.datasets[element.datasetIndex].data[element.index];
-    showMatchDetail(detail, point.match, colors);
+    showMatchDetail(detail, point.match, colors, point.ring);
   }
 
   // --- Redraw everything that depends on the active filter ---
@@ -276,12 +310,14 @@ function renderExplore(container, data, teamColors) {
     const draws = matches.length - aWins - bWins;
     const filterLabel = chipList.find((c) => c.id === activeFilter).label;
     const what = activeFilter === "all" ? "all" : filterLabel;
+    const onPenalties = matches.filter((m) => m.shootout_winner).length;
     filterSummary.textContent =
       `Showing ${what} ${matches.length === 1 ? "match" : `${matches.length} matches`}: ` +
-      `${data.team_a.name} ${aWins} · ${draws} ${draws === 1 ? "draw" : "draws"} · ${bWins} ${data.team_b.name}`;
+      `${data.team_a.name} ${aWins} · ${draws} ${draws === 1 ? "draw" : "draws"} · ${bWins} ${data.team_b.name}` +
+      `${onPenalties ? ` · ${onPenalties} went to penalties` : ""}`;
 
     if (timelineChart) {
-      timelineChart.data.datasets = buildDatasets(matches, data, colors);
+      timelineChart.data.datasets = buildDatasets(matches, data, colors, ringColorOf);
       timelineChart.update();
       canvas.setAttribute("aria-label",
         `Timeline of ${matches.length} matches between ${data.team_a.name} and ${data.team_b.name}, ` +
@@ -298,9 +334,10 @@ function renderExplore(container, data, teamColors) {
     for (const match of [...matches].reverse()) {
       const row = makeEl("tr");
       const scoreCell = makeEl("td");
-      const dot = makeEl("span", "dot");
-      dot.style.background = colors[match.winner];
-      scoreCell.append(dot, scoreLine(match));
+      scoreCell.append(makeMatchDot(match, colors, ringColorOf(match)), scoreLine(match));
+      if (match.shootout_winner) {
+        scoreCell.append(makeEl("span", "table-pens", ` (${match.shootout_winner} won on penalties)`));
+      }
       row.append(makeEl("td", "nowrap", formatDate(match.date)), scoreCell,
         makeEl("td", "", match.tournament), makeEl("td", "", match.city));
       table.append(row);

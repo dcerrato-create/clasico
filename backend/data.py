@@ -155,8 +155,9 @@ def head_to_head(team_a, team_b):
             "b_goals": b_goals,
             "winner": winner,
             "margin": abs(a_goals - b_goals),
-            # A shootout does not change the result: the match still counts
-            # as a draw, and we report who won the shootout separately.
+            # A shootout never changes the result: the match keeps its real
+            # score (usually a draw; sometimes a win in a two-legged tie) and
+            # we report who won the shootout separately.
             "shootout_winner": SHOOTOUTS.get(key),
             "scorers": GOALS.get(key, []),
         })

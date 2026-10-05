@@ -117,7 +117,7 @@ def build_facts(summary):
             }
             for c in summary["by_category"]
         ],
-        "penalty_shootouts (these matches count as draws in the record)": {
+        "penalty_shootouts (a shootout never changes the match result in the record above)": {
             "total": summary["shootouts"]["total"],
             f"{a} shootout wins": summary["shootouts"]["a_wins"],
             f"{b} shootout wins": summary["shootouts"]["b_wins"],

@@ -130,15 +130,33 @@ function renderReveal(container, data, teamColors, quick = false) {
 
   const firstYear = summary.first_match.date.slice(0, 4);
   const latestYear = summary.latest_match.date.slice(0, 4);
-  let extraText = `First meeting ${firstYear} · Latest ${latestYear}`;
-  if (summary.shootouts.total > 0) {
-    const s = summary.shootouts;
-    extraText += ` · ${s.total} penalty shootout${s.total === 1 ? "" : "s"} ` +
-      `(${teamA.name} ${s.a_wins}, ${teamB.name} ${s.b_wins}), counted as draws`;
-  }
-  const extra = makeEl("p", "headline-extra step", extraText);
+  const extra = makeEl("p", "headline-extra step", `First meeting ${firstYear} · Latest ${latestYear}`);
 
-  headline.append(total, record, bar, goals, extra);
+  // A penalty shootout never changes the record: the match keeps its real
+  // result (almost always a draw). This strip says who won the shootouts.
+  const shootouts = summary.shootouts;
+  const penalties = makeEl("p", "penalties step");
+  if (shootouts.total > 0) {
+    const sentence = shootouts.total === 1
+      ? "1 match went to a penalty shootout"
+      : `${shootouts.total} matches went to a penalty shootout`;
+    penalties.append(makeEl("span", "penalties-label", "Penalties"), makeEl("span", "", sentence));
+    for (const [color, name, wins] of [
+      [teamColors.a, teamA.name, shootouts.a_wins],
+      [teamColors.b, teamB.name, shootouts.b_wins],
+    ]) {
+      const item = makeEl("span", "penalties-team");
+      const dot = makeEl("span", "dot");
+      dot.style.background = color;
+      item.append(dot, `${name} won ${wins}`);
+      penalties.append(item);
+    }
+    penalties.append(makeEl("span", "penalties-note", "Shootouts don't change the record: a drawn match still counts as a draw."));
+  } else {
+    penalties.hidden = true;
+  }
+
+  headline.append(total, record, bar, penalties, goals, extra);
   card.append(headline);
   container.append(card);
 
@@ -150,6 +168,7 @@ function renderReveal(container, data, teamColors, quick = false) {
     await countUp(totalNumber, summary.total_matches);
     record.classList.add("show");
     bar.classList.add("show");
+    penalties.classList.add("show");
     await Promise.all([
       countUp(a.number, summary.a_wins),
       countUp(d.number, summary.draws),
