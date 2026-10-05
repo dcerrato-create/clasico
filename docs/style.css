@@ -211,6 +211,51 @@ button:disabled { cursor: not-allowed; opacity: 0.6; }
 }
 .banner p { margin: 0; flex: 1 1 220px; }
 
+/* The button with the "Skip animation" checkbox beside it */
+.picker-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 16px 26px;
+}
+.skip-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 44px;
+  color: var(--muted);
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  cursor: pointer;
+  user-select: none;
+}
+.skip-toggle:hover { color: var(--text); }
+/* A square white checkbox drawn by us, so it matches the theme */
+.skip-toggle input {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 22px;
+  height: 22px;
+  margin: 0;
+  display: grid;
+  place-items: center;
+  background: rgba(0, 0, 0, 0.55);
+  border: 2px solid var(--text);
+  border-radius: 3px;
+  cursor: pointer;
+}
+.skip-toggle input:checked { background: var(--text); }
+.skip-toggle input:checked::after {
+  content: "✓";
+  color: #000;
+  font-size: 16px;
+  font-weight: 800;
+  line-height: 1;
+}
+
 .message {
   margin: 18px 0 0;
   color: var(--danger);
@@ -735,6 +780,37 @@ button:disabled { cursor: not-allowed; opacity: 0.6; }
 .stage.pending .side-name { opacity: 0; transform: translateY(12px); }
 .stage.pending .stage-vs { opacity: 0; transform: scale(0.2); }
 
+/* Quick clash ("Skip animation" is ticked): no full-screen show. The small
+   flags slide in from their sides, bump in the middle and settle. */
+.stage.quick { animation: quick-shake 0.35s ease 0.5s; }
+.stage.quick .side-a { animation: quick-slam-a 0.85s cubic-bezier(0.2, 0.8, 0.3, 1) both; }
+.stage.quick .side-b { animation: quick-slam-b 0.85s cubic-bezier(0.2, 0.8, 0.3, 1) both; }
+.stage.quick .stage-vs { animation: quick-vs 0.4s ease 0.55s both; }
+@keyframes quick-slam-a {
+  0%   { transform: translateX(-120vw) rotate(-10deg); }
+  60%  { transform: translateX(22%) rotate(3deg); }
+  78%  { transform: translateX(-8%) rotate(-1deg); }
+  100% { transform: none; }
+}
+@keyframes quick-slam-b {
+  0%   { transform: translateX(120vw) rotate(10deg); }
+  60%  { transform: translateX(-22%) rotate(-3deg); }
+  78%  { transform: translateX(8%) rotate(1deg); }
+  100% { transform: none; }
+}
+@keyframes quick-shake {
+  0%, 100% { transform: none; }
+  20% { transform: translate(-5px, 3px); }
+  40% { transform: translate(5px, -3px); }
+  60% { transform: translate(-3px, -2px); }
+  80% { transform: translate(3px, 2px); }
+}
+@keyframes quick-vs {
+  0%   { opacity: 0; transform: scale(0.2); }
+  70%  { opacity: 1; transform: scale(1.4); }
+  100% { opacity: 1; transform: scale(1); }
+}
+
 .never-met { margin: 24px 0 4px; font-size: 1.15rem; font-weight: 700; }
 .never-met-hint { margin: 0; color: var(--muted); }
 
@@ -1061,4 +1137,5 @@ button:disabled { cursor: not-allowed; opacity: 0.6; }
 /* People who ask their device for less motion get no clash and no sliding. */
 @media (prefers-reduced-motion: reduce) {
   .step, .side-name, .stage-vs, .primary, .featured-card { transition: none; }
+  .stage.quick, .stage.quick .side, .stage.quick .stage-vs { animation: none; }
 }

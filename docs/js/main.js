@@ -11,6 +11,8 @@ const state = {
 const dom = {
   form: document.getElementById("picker-form"),
   goButton: document.getElementById("go-button"),
+  skipToggle: document.getElementById("skip-toggle"),
+  skipAnimation: document.getElementById("skip-animation"),
   message: document.getElementById("message"),
   banner: document.getElementById("server-banner"),
   bannerText: document.getElementById("server-banner-text"),
@@ -131,7 +133,11 @@ function renderRivalry(data) {
   document.documentElement.style.setProperty("--team-a", teamColors.a);
   document.documentElement.style.setProperty("--team-b", teamColors.b);
 
-  renderReveal(dom.result, data, teamColors); // clash + flags + headline
+  // "Skip animation" swaps the full-screen clash for a quick one in the card.
+  const quick = dom.skipAnimation.checked;
+  renderReveal(dom.result, data, teamColors, quick); // clash + flags + headline
+  // The first rivalry always gets the full clash; after it, offer the checkbox.
+  dom.skipToggle.hidden = false;
   if (data.summary.total_matches > 0) {
     renderStory(dom.result, data);
     renderExplore(dom.result, data, state.categories, teamColors);

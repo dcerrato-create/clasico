@@ -48,7 +48,14 @@
             </div>
           </div>
         </div>
-        <button type="submit" id="go-button" class="primary">Show the rivalry</button>
+        <div class="picker-actions">
+          <button type="submit" id="go-button" class="primary">Show the rivalry</button>
+          <!-- Appears after the first rivalry has been shown (see main.js) -->
+          <label class="skip-toggle" id="skip-toggle" hidden>
+            <input type="checkbox" id="skip-animation">
+            Skip animation
+          </label>
+        </div>
         <p id="message" class="message" role="alert" hidden></p>
       </form>
     </section>

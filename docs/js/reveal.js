@@ -57,7 +57,8 @@ function buildRecordItem(kind, label) {
 
 // Builds the reveal card inside `container` and plays the animation.
 // teamColors = { a, b, draw } from pickTeamColors() in colors.js.
-function renderReveal(container, data, teamColors) {
+// quick = true plays a short clash inside the card instead of the full-screen one.
+function renderReveal(container, data, teamColors, quick = false) {
   const { team_a: teamA, team_b: teamB, summary } = data;
 
   const card = makeEl("section", "card reveal");
@@ -73,6 +74,12 @@ function renderReveal(container, data, teamColors) {
 
   // Plays the clash, then shows the small flags in the card.
   async function clashThenShow() {
+    if (quick) {
+      // Quick version: the small flags slide in and bump (CSS, ".stage.quick").
+      stage.classList.replace("pending", "quick");
+      await wait(1000);
+      return;
+    }
     await playClash(teamA, teamB, teamColors, {
       a: sideA.querySelector(".flag"),
       b: sideB.querySelector(".flag"),
