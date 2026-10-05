@@ -62,11 +62,12 @@ function brightness(hex) {
 }
 
 // Dark colors (like navy) would vanish on our dark page, so lighten them
-// step by step until they are bright enough to see.
-function makeVisible(hex) {
+// step by step until they are bright enough to see. Colored TEXT needs to be
+// brighter than a colored bar, so callers can ask for a higher minimum.
+function makeVisible(hex, minimum = 0.1) {
   const hsl = hexToHsl(hex);
   let color = hex;
-  while (brightness(color) < 0.1 && hsl.l < 0.7) {
+  while (brightness(color) < minimum && hsl.l < 0.7) {
     hsl.l += 0.02;
     color = hslToHex(hsl);
   }

@@ -4,11 +4,11 @@
 // the RIGHT, and draws sit in gray in the middle, so the longer side shows
 // who owned that decade. The numbers come from the backend (/api/eras).
 
-// "2000s: Honduras 11 – 2 draws – El Salvador 2"
+// "2000s: Honduras 11 – Draws 2 – El Salvador 2"
+// The word always comes before its number, so it can't be read as a score.
 function eraRecordText(record, teamA, teamB) {
   if (record.matches === 0) return `${record.label}: No matches`;
-  const draws = `${record.draws} ${record.draws === 1 ? "draw" : "draws"}`;
-  return `${record.label}: ${teamA} ${record.a_wins} – ${draws} – ${teamB} ${record.b_wins}`;
+  return `${record.label}: ${teamA} ${record.a_wins} – Draws ${record.draws} – ${teamB} ${record.b_wins}`;
 }
 
 // Builds the tab inside `panel`. onPickDecade(decade) is called when a decade
@@ -60,7 +60,21 @@ function createEraChart(panel, data, teamColors, onPickDecade) {
     const button = makeEl("button", "secondary", `See the ${record.label} on the Match Timeline →`);
     button.type = "button";
     button.addEventListener("click", () => onPickDecade(record.decade));
-    detail.replaceChildren(makeEl("p", "era-record", eraRecordText(record, teamA, teamB)), button);
+    // The record, with each part in its own color: Team A, draws (gray), Team B.
+    const line = makeEl("p", "era-record");
+    line.append(`${record.label}: `);
+    const parts = [
+      [colors.a, `${teamA} ${record.a_wins}`],
+      [colors.draw, `Draws ${record.draws}`],
+      [colors.b, `${teamB} ${record.b_wins}`],
+    ];
+    parts.forEach(([color, text], index) => {
+      if (index > 0) line.append(makeEl("span", "era-record-dash", " – "));
+      const part = makeEl("span", "era-record-part", text);
+      part.style.color = makeVisible(color, 0.22); // bright enough to read as text
+      line.append(part);
+    });
+    detail.replaceChildren(line, button);
   }
 
   // One bar piece. It starts at width 0 and grows to `share` (0 to 1) of
