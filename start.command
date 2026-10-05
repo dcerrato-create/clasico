@@ -34,7 +34,17 @@ trap 'kill $BACKEND_PID $FRONTEND_PID 2>/dev/null' EXIT
 
 (cd backend && exec .venv/bin/python app.py) &
 BACKEND_PID=$!
-backend/.venv/bin/python -m http.server 8000 --bind 127.0.0.1 --directory docs >/dev/null 2>&1 &
+# The frontend server tells the browser never to keep old copies of the files,
+# so a normal refresh always shows the latest version while developing.
+backend/.venv/bin/python -c "
+import functools, http.server
+class NoCache(http.server.SimpleHTTPRequestHandler):
+    def end_headers(self):
+        self.send_header('Cache-Control', 'no-store')
+        super().end_headers()
+handler = functools.partial(NoCache, directory='docs')
+http.server.ThreadingHTTPServer(('127.0.0.1', 8000), handler).serve_forever()
+" >/dev/null 2>&1 &
 FRONTEND_PID=$!
 
 sleep 2
