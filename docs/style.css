@@ -680,6 +680,33 @@ button:disabled { cursor: not-allowed; opacity: 0.6; }
   100% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
 }
 
+/* The rivalry's own name (Featured Clásicos only), above the flags. It
+   spreads in while the flags charge and punches forward when they hit. */
+.clash-title {
+  top: 13vh;
+  left: 4%;
+  right: 4%;
+  z-index: 4;
+  text-align: center;
+  font-family: var(--font-impact);
+  font-style: italic;
+  font-size: clamp(1.5rem, 5.6vw, 3.8rem);
+  line-height: 1.05;
+  text-transform: uppercase;
+  color: #fff;
+  text-shadow: 0 0 34px rgba(120, 170, 255, 0.95), 4px 4px 0 #000;
+  animation: clash-title-in 0.8s ease-out 0.15s both;
+}
+@keyframes clash-title-in {
+  from { opacity: 0; transform: translateY(-24px); letter-spacing: 0.45em; }
+  to   { opacity: 1; transform: none; letter-spacing: 0.03em; }
+}
+.impact .clash-title { animation: clash-title-hit 0.6s cubic-bezier(0.2, 1.4, 0.4, 1) both; }
+@keyframes clash-title-hit {
+  from { transform: scale(1.35); text-shadow: 0 0 60px #fff, 4px 4px 0 #000; }
+  to   { transform: scale(1); }
+}
+
 .impact .clash-name { animation: clash-name 0.5s ease-out 0.3s both; }
 @keyframes clash-name {
   from { opacity: 0; transform: translateY(40px); letter-spacing: 0.4em; }
@@ -714,6 +741,7 @@ button:disabled { cursor: not-allowed; opacity: 0.6; }
 .settle .clash-shaker { animation: none; }
 .settle .clash-backdrop { animation: clash-fade-out var(--shrink-time) ease-in forwards; }
 .settle .clash-glow,
+.settle .clash-title,
 .settle .clash-vs,
 .settle .clash-skip { animation: clash-fade-out 0.25s ease-out forwards; }
 .settle .clash-bar.top { animation: clash-bar-top-out 0.35s ease-in forwards; }
@@ -795,6 +823,20 @@ button:disabled { cursor: not-allowed; opacity: 0.6; }
   text-shadow: 0 0 20px rgba(120, 170, 255, 0.9);
   transition: opacity 0.4s ease, transform 0.4s cubic-bezier(0.2, 1.6, 0.4, 1);
 }
+
+/* The clásico's name, across the top of the stage (Featured Clásicos only) */
+.clasico-name {
+  grid-column: 1 / -1;
+  margin: 0 0 10px;
+  font-family: var(--font-display);
+  font-size: clamp(1.2rem, 4.6vw, 1.9rem);
+  letter-spacing: 0.14em;
+  line-height: 1.1;
+  text-transform: uppercase;
+  text-shadow: 0 0 20px rgba(120, 170, 255, 0.9);
+  transition: opacity 0.5s ease;
+}
+.stage.pending .clasico-name { opacity: 0; }
 
 /* While the clash plays, the small flags wait, invisible, for the big ones. */
 .stage.pending .flag { visibility: hidden; }

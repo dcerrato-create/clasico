@@ -41,6 +41,14 @@ function countUp(el, target, duration = 900) {
   });
 }
 
+// The rivalry's own name, if it is one of the Featured Clásicos in config.js
+// (in either order: Brazil vs Argentina is still the Superclásico). "" if not.
+function clasicoName(teamA, teamB) {
+  const found = FEATURED_CLASICOS.find((c) =>
+    (c.a === teamA.name && c.b === teamB.name) || (c.a === teamB.name && c.b === teamA.name));
+  return found ? found.tagline : "";
+}
+
 function buildSide(team, sideClass) {
   const side = makeEl("div", `side ${sideClass}`);
   side.append(createFlag(team), makeEl("span", "side-name", team.name));
@@ -69,6 +77,9 @@ function renderReveal(container, data, teamColors, quick = false) {
   const stage = makeEl("div", "stage pending");
   const sideA = buildSide(teamA, "side-a");
   const sideB = buildSide(teamB, "side-b");
+  // Featured Clásicos show their name: big in the clash, small above the flags.
+  const name = clasicoName(teamA, teamB);
+  if (name) stage.append(makeEl("p", "clasico-name", name));
   stage.append(sideA, makeEl("div", "stage-vs", "VS"), sideB);
   card.append(stage);
 
@@ -83,7 +94,7 @@ function renderReveal(container, data, teamColors, quick = false) {
     await playClash(teamA, teamB, teamColors, {
       a: sideA.querySelector(".flag"),
       b: sideB.querySelector(".flag"),
-    });
+    }, name);
     stage.classList.remove("pending");
   }
 
