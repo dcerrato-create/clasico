@@ -54,4 +54,16 @@ const CLASH = {
   sparks: 170,       // number of sparks at the moment of impact
 };
 
+// The Era Chart ("Who owned each decade?"). Times are in milliseconds.
+const ERA_CHART = {
+  teamAColor: "",        // "" = Team A's own color. Or force one, e.g. "#4da3ff"
+  teamBColor: "",        // "" = Team B's own color
+  drawColor: "#7f8aa0",  // draws, in the middle of each bar
+  // How solid the losing side of a decade is: 1 = same as the winner,
+  // 0.5 = half see-through. Careful: a faded WHITE team looks like the gray draws.
+  fadedSide: 1,
+  growTime: 650,         // how long one decade's bar takes to grow
+  stagger: 120,          // delay between one decade and the next
+};
+
 /* ========================== end of CONFIG ================================ */

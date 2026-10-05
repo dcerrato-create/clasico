@@ -212,6 +212,27 @@ def assign_categories(matches):
     return categories
 
 
+def decade_records(matches, all_matches):
+    """Wins, draws and losses per decade, oldest decade first.
+
+    `matches` are the ones to count (maybe filtered to one tournament).
+    `all_matches` is the whole rivalry: it decides which decades are listed,
+    so a decade with nothing to count still shows up, with zeros.
+    """
+    first = int(all_matches[0]["date"][:4]) // 10 * 10   # 1927 -> 1920
+    last = int(all_matches[-1]["date"][:4]) // 10 * 10
+    records = {
+        decade: {"decade": decade, "label": f"{decade}s",
+                 "matches": 0, "a_wins": 0, "draws": 0, "b_wins": 0}
+        for decade in range(first, last + 10, 10)
+    }
+    for m in matches:
+        record = records[int(m["date"][:4]) // 10 * 10]
+        record["matches"] += 1
+        record[{"a": "a_wins", "draw": "draws", "b": "b_wins"}[m["winner"]]] += 1
+    return list(records.values())
+
+
 def _short(match):
     """A compact version of a match, used inside the summary."""
     if match is None:

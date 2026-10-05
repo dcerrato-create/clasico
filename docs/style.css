@@ -1159,6 +1159,153 @@ button:disabled { cursor: not-allowed; opacity: 0.6; }
 }
 .detail-muted { color: var(--muted); }
 
+/* The bar that appears when the timeline shows a single decade */
+.decade-filter {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-top: 16px;
+  padding: 10px 14px;
+  background: var(--text);
+  color: #000;
+  border-radius: 6px;
+}
+.decade-text { font-family: var(--font-display); font-size: 1.4rem; letter-spacing: 0.05em; line-height: 1; }
+.decade-filter .secondary { color: #000; border-color: #000; }
+.decade-filter .secondary:hover { background: #000; color: #fff; }
+
+/* ---------- 6. Era Chart ("Who owned each decade?") ---------- */
+
+.era-title {
+  margin: 18px 0 0;
+  font-family: var(--font-display);
+  font-size: 1.9rem;
+  font-weight: 400;
+  letter-spacing: 0.05em;
+  line-height: 1.05;
+}
+.era-subtitle { margin: 2px 0 10px; color: var(--muted); font-size: 0.9rem; }
+.era-legend { justify-content: space-between; margin-bottom: 10px; }
+
+.era-rows {
+  display: grid;
+  gap: 6px;
+  padding: 10px 8px;
+  background: rgba(0, 0, 0, 0.45);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+}
+
+/* One decade. It is a button, so it can be clicked and reached by keyboard. */
+.era-row {
+  display: grid;
+  grid-template-columns: 50px 1fr;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  padding: 3px 4px;
+  background: none;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  color: var(--text);
+  text-align: left;
+}
+.era-row:hover:not(:disabled),
+.era-row.selected { background: rgba(255, 255, 255, 0.08); border-color: var(--border); }
+.era-row.selected { border-color: var(--text); }
+.era-row:disabled { opacity: 1; cursor: default; }
+
+.era-label { font-family: var(--font-display); font-size: 1.25rem; letter-spacing: 0.04em; line-height: 1; }
+
+/* The track is split down the middle: Team A's half and Team B's half. */
+.era-track {
+  position: relative;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  align-items: center;
+  height: 26px;
+}
+/* the center line, shared by every row */
+.era-track::before {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: -4px;
+  bottom: -4px;
+  width: 1px;
+  background: rgba(255, 255, 255, 0.25);
+}
+.era-side { display: flex; align-items: center; height: 100%; min-width: 0; }
+.era-bars { display: flex; flex: 1; height: 100%; min-width: 0; }
+.era-side.left .era-bars { justify-content: flex-end; } /* grows leftwards from the middle */
+
+.era-bar {
+  width: 0; /* era.js sets the real width, and this transition makes it grow */
+  height: 100%;
+  transition-property: width;
+  transition-timing-function: cubic-bezier(0.2, 0.9, 0.3, 1);
+}
+.era-bar.a { border-radius: 4px 0 0 4px; }
+.era-bar.b { border-radius: 0 4px 4px 0; }
+/* the side that lost the decade can be made fainter (ERA_CHART.fadedSide in config.js) */
+.owner-b .era-bar.a, .owner-a .era-bar.b { opacity: var(--era-faded, 1); }
+
+.era-num {
+  flex: none;
+  width: 26px;
+  font-family: var(--font-impact);
+  font-size: 1rem;
+  text-align: center;
+  color: var(--muted);
+}
+.owner-a .left .era-num, .owner-b .right .era-num { color: var(--text); font-size: 1.2rem; }
+
+/* number of draws, sitting on the gray block in the middle */
+.era-draw-num {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  padding: 0 5px;
+  background: rgba(0, 0, 0, 0.7);
+  border-radius: 3px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  line-height: 1.5;
+}
+/* numbers fade in once the bars start growing */
+.era-num, .era-draw-num { opacity: 0; transition: opacity 0.5s ease 0.3s; }
+.era-rows.grown .era-num, .era-rows.grown .era-draw-num { opacity: 1; }
+
+.era-empty {
+  grid-column: 1 / -1;
+  position: relative; /* sits above the center line */
+  justify-self: center;
+  padding: 0 10px;
+  background: #060b18;
+  color: var(--muted);
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.era-status { margin: 0; padding: 18px 8px; text-align: center; color: var(--muted); }
+.era-error { color: var(--danger); }
+.era-detail { display: grid; gap: 10px; justify-items: start; min-height: 0; }
+.era-detail.empty { justify-items: center; }
+.era-record { font-family: var(--font-display); font-size: 1.5rem; letter-spacing: 0.04em; line-height: 1.15; }
+
+@media (min-width: 700px) {
+  .era-row { grid-template-columns: 70px 1fr; gap: 10px; }
+  .era-label { font-size: 1.5rem; }
+  .era-track { height: 32px; }
+  .era-num { width: 34px; font-size: 1.15rem; }
+  .owner-a .left .era-num, .owner-b .right .era-num { font-size: 1.4rem; }
+}
+
 .match-table { margin-top: 14px; }
 .match-table summary { cursor: pointer; color: var(--muted); padding: 8px 0; }
 .table-scroll { max-height: 340px; overflow: auto; }
@@ -1190,4 +1337,5 @@ button:disabled { cursor: not-allowed; opacity: 0.6; }
 @media (prefers-reduced-motion: reduce) {
   .step, .side-name, .stage-vs, .primary, .featured-card { transition: none; }
   .stage.quick, .stage.quick .side, .stage.quick .stage-vs { animation: none; }
+  .era-bar, .era-num, .era-draw-num { transition: none; }
 }

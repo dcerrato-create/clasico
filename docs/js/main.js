@@ -34,6 +34,7 @@ function applyColors() {
   for (const [key, cssName] of Object.entries(names)) {
     if (COLORS[key]) document.documentElement.style.setProperty(cssName, COLORS[key]);
   }
+  document.documentElement.style.setProperty("--era-faded", ERA_CHART.fadedSide);
 }
 
 function showMessage(text) {

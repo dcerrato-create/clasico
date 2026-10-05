@@ -107,6 +107,36 @@ def rivalry():
     })
 
 
+@app.get("/api/eras")
+def eras():
+    """The record decade by decade, for the Era Chart.
+
+    Example: /api/eras?team_a=Honduras&team_b=El Salvador&tournament=Gold Cup
+    "tournament" is the id of one of this rivalry's filter chips. Leave it
+    out (or send "all") to count every match.
+    """
+    team_a, team_b = get_team_pair(request.args.get("team_a"), request.args.get("team_b"))
+    matches = data.head_to_head(team_a, team_b)
+    if not matches:
+        raise ApiError(f"{team_a} and {team_b} have never played each other.", 404)
+
+    # The filter must be one of the chips this rivalry really has.
+    categories = data.assign_categories(matches)
+    labels = {"all": "All matches", **{c["id"]: c["label"] for c in categories}}
+    tournament = (request.args.get("tournament") or "all").strip()
+    if tournament not in labels:
+        raise ApiError(f"{team_a} and {team_b} have no matches filed under \"{tournament}\".", 400)
+
+    counted = matches if tournament == "all" else [m for m in matches if m["category"] == tournament]
+    return jsonify({
+        "team_a": data.team_info(team_a),
+        "team_b": data.team_info(team_b),
+        "tournament": {"id": tournament, "label": labels[tournament]},
+        "matches": len(counted),
+        "decades": data.decade_records(counted, matches),
+    })
+
+
 @app.post("/api/story")
 def ai_story():
     """The AI Story paragraph for a matchup.

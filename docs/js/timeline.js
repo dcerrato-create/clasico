@@ -1,5 +1,7 @@
 // timeline.js - the Explore card: tabs, tournament filter chips and the
 // Match Timeline chart (drawn with Chart.js, loaded from a CDN in index.html).
+// The Era Chart tab lives in era.js; this file switches between the two and
+// keeps the filters (tournament chip + decade) that both tabs share.
 
 let timelineChart = null; // the current Chart.js chart, so we can remove it later
 
@@ -136,23 +138,33 @@ function renderExplore(container, data, teamColors) {
   const categories = data.categories;
   const colors = teamColors; // { a, b, draw } - each team's own color
   const allMatches = data.matches;
-  let activeFilter = "all";
+  let activeFilter = "all";    // which tournament chip is on
+  let activeDecade = null;     // e.g. 2000 when the Era Chart sent us here
+  let activeTab = "timeline";  // "timeline" or "era"
 
   const card = makeEl("section", "card explore");
   card.setAttribute("aria-label", "Explore the matches");
 
-  // --- Tabs (Era Chart and Top Scorers arrive in Phase 2) ---
+  // --- Tabs (Top Scorers arrives in Phase 2, part 2) ---
   const tabs = makeEl("div", "tabs");
-  const timelineTab = makeEl("button", "tab active", "Match Timeline");
-  timelineTab.type = "button";
-  tabs.append(timelineTab);
-  for (const name of ["Era Chart", "Top Scorers"]) {
-    const tab = makeEl("button", "tab", name);
-    tab.type = "button";
-    tab.disabled = true;
-    tab.append(makeEl("span", "soon", "soon"));
-    tabs.append(tab);
+  const tabButtons = {
+    timeline: makeEl("button", "tab", "Match Timeline"),
+    era: makeEl("button", "tab", "Era Chart"),
+  };
+  for (const [name, button] of Object.entries(tabButtons)) {
+    button.type = "button";
+    button.addEventListener("click", () => showTab(name));
+    tabs.append(button);
   }
+  const scorersTab = makeEl("button", "tab", "Top Scorers");
+  scorersTab.type = "button";
+  scorersTab.disabled = true;
+  scorersTab.append(makeEl("span", "soon", "soon"));
+  tabs.append(scorersTab);
+
+  // Each tab has its own panel; only one is visible at a time.
+  const timelinePanel = makeEl("div", "tab-panel");
+  const eraPanel = makeEl("div", "tab-panel");
 
   // --- Filter chips: "All" plus one per tournament ---
   const chips = makeEl("div", "chips");
@@ -175,6 +187,17 @@ function renderExplore(container, data, teamColors) {
     });
     chips.append(chip);
   }
+
+  // Shown only while the timeline is narrowed to one decade.
+  const decadeFilter = makeEl("div", "decade-filter");
+  const decadeText = makeEl("span", "decade-text");
+  const decadeReset = makeEl("button", "secondary", "✕ Show all years");
+  decadeReset.type = "button";
+  decadeReset.addEventListener("click", () => {
+    activeDecade = null;
+    update();
+  });
+  decadeFilter.append(decadeText, decadeReset);
 
   const filterSummary = makeEl("p", "filter-summary");
 
@@ -217,8 +240,27 @@ function renderExplore(container, data, teamColors) {
   tableScroll.append(table);
   tableBox.append(tableScroll);
 
-  card.append(tabs, chips, filterSummary, legend, chartWrap, detail, tableBox);
+  timelinePanel.append(decadeFilter, filterSummary, legend, chartWrap, detail, tableBox);
+  card.append(tabs, chips, timelinePanel, eraPanel);
   container.append(card);
+
+  // The Era Chart. Clicking one of its decades brings us back to the
+  // timeline, showing only that decade.
+  const eraChart = createEraChart(eraPanel, data, colors, (decade) => {
+    activeDecade = decade;
+    showTab("timeline");
+    card.scrollIntoView({ behavior: "smooth", block: "start" });
+  });
+
+  function showTab(name) {
+    activeTab = name;
+    timelinePanel.hidden = name !== "timeline";
+    eraPanel.hidden = name !== "era";
+    for (const [tabName, button] of Object.entries(tabButtons)) {
+      button.classList.toggle("active", tabName === name);
+    }
+    update();
+  }
 
   // --- Create the chart ---
   if (timelineChart) {
@@ -295,28 +337,46 @@ function renderExplore(container, data, teamColors) {
     showMatchDetail(detail, point.match, colors, point.ring);
   }
 
-  // --- Redraw everything that depends on the active filter ---
+  // --- Redraw everything that depends on the active filters ---
   function update() {
-    const matches = activeFilter === "all"
-      ? allMatches
-      : allMatches.filter((m) => m.category === activeFilter);
-
     for (const chip of chips.children) {
       chip.setAttribute("aria-pressed", String(chip.dataset.filter === activeFilter));
     }
+    const filterLabel = chipList.find((c) => c.id === activeFilter).label;
+
+    // The Era Chart draws itself; it only needs to know the tournament.
+    if (activeTab === "era") {
+      eraChart.show(activeFilter, filterLabel);
+      return;
+    }
+
+    // Keep the matches that pass BOTH filters: tournament chip and decade.
+    const matches = allMatches.filter((m) => {
+      const year = Number(m.date.slice(0, 4));
+      const tournamentOk = activeFilter === "all" || m.category === activeFilter;
+      const decadeOk = activeDecade === null || (year >= activeDecade && year < activeDecade + 10);
+      return tournamentOk && decadeOk;
+    });
+
+    decadeFilter.hidden = activeDecade === null;
+    decadeText.textContent = `Showing only the ${activeDecade}s`;
 
     const aWins = matches.filter((m) => m.winner === "a").length;
     const bWins = matches.filter((m) => m.winner === "b").length;
     const draws = matches.length - aWins - bWins;
-    const filterLabel = chipList.find((c) => c.id === activeFilter).label;
     const what = activeFilter === "all" ? "all" : filterLabel;
     const onPenalties = matches.filter((m) => m.shootout_winner).length;
+    const when = activeDecade === null ? "" : ` from the ${activeDecade}s`;
     filterSummary.textContent =
-      `Showing ${what} ${matches.length === 1 ? "match" : `${matches.length} matches`}: ` +
+      `Showing ${what} ${matches.length === 1 ? "match" : `${matches.length} matches`}${when}: ` +
       `${data.team_a.name} ${aWins} · ${draws} ${draws === 1 ? "draw" : "draws"} · ${bWins} ${data.team_b.name}` +
       `${onPenalties ? ` · ${onPenalties} went to penalties` : ""}`;
 
     if (timelineChart) {
+      // Zoom the time axis in on the decade, or back out to the whole rivalry.
+      const xAxis = timelineChart.options.scales.x;
+      xAxis.min = activeDecade === null ? firstYear - 1 : activeDecade - 1;
+      xAxis.max = activeDecade === null ? lastYear + 2 : activeDecade + 10;
       timelineChart.data.datasets = buildDatasets(matches, data, colors, ringColorOf);
       timelineChart.update();
       canvas.setAttribute("aria-label",
@@ -344,5 +404,5 @@ function renderExplore(container, data, teamColors) {
     }
   }
 
-  update();
+  showTab("timeline");
 }
