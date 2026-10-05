@@ -34,7 +34,7 @@ const FEATURED_CLASICOS = [
 
 // "Famous Fierce Rivalries": no special name, so no tagline.
 const FIERCE_RIVALRIES = [
-  { a: "Argentina", b: "Netherlands" },
+  { a: "Argentina", b: "England" },
   { a: "France", b: "Italy" },
   { a: "Chile", b: "Peru" },
   { a: "Denmark", b: "Sweden" },
