@@ -17,6 +17,7 @@ const dom = {
   bannerText: document.getElementById("server-banner-text"),
   bannerRetry: document.getElementById("server-retry"),
   featured: document.getElementById("featured"),
+  fierce: document.getElementById("fierce"),
   result: document.getElementById("result"),
 };
 
@@ -58,7 +59,8 @@ async function loadTeams() {
     dom.banner.hidden = false;
   }
   dom.bannerRetry.disabled = false;
-  renderFeatured(dom.featured, state.teams, pickRivalry);
+  renderFeatured(dom.featured, FEATURED_CLASICOS, state.teams, pickRivalry);
+  renderFeatured(dom.fierce, FIERCE_RIVALRIES, state.teams, pickRivalry);
   return state.teams.length > 0;
 }
 

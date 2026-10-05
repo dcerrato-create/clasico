@@ -21,12 +21,28 @@ const COLORS = {
   fallbackTeamB: "#ff9040",
 };
 
-// Rivalries shown on the home screen. Names must match the dataset
-// (for example "United States", not "USA").
-const FEATURED_RIVALRIES = [
-  { a: "Honduras", b: "El Salvador", tagline: "El Clásico Centroamericano" },
+// The two lists of rivalries on the home screen. Team names must match the
+// dataset (for example "United States", not "USA").
+
+// "Featured Clásicos": rivalries that have their own name (the tagline).
+const FEATURED_CLASICOS = [
+  { a: "Honduras", b: "Costa Rica", tagline: "El Clásico Centroamericano" },
   { a: "Mexico", b: "United States", tagline: "El Clásico de la CONCACAF" },
   { a: "Argentina", b: "Brazil", tagline: "Superclásico de las Américas" },
+  { a: "Argentina", b: "Uruguay", tagline: "Clásico del Río de la Plata" },
+];
+
+// "Famous Fierce Rivalries": no special name, so no tagline.
+const FIERCE_RIVALRIES = [
+  { a: "Argentina", b: "Netherlands" },
+  { a: "France", b: "Italy" },
+  { a: "Chile", b: "Peru" },
+  { a: "Denmark", b: "Sweden" },
+  { a: "Germany", b: "Netherlands" },
+  { a: "Japan", b: "South Korea" },
+  { a: "Serbia", b: "Croatia" },
+  { a: "Egypt", b: "Algeria" },
+  { a: "England", b: "Scotland" },
 ];
 
 // The cinematic flag clash. Times are in milliseconds.

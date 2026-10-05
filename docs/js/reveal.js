@@ -91,7 +91,7 @@ function renderReveal(container, data, teamColors, quick = false) {
   if (summary.total_matches === 0) {
     const note = makeEl("p", "never-met",
       `${teamA.name} and ${teamB.name} have never played each other.`);
-    const hint = makeEl("p", "never-met-hint", "Try another pair, or one of the featured rivalries below.");
+    const hint = makeEl("p", "never-met-hint", "Try another pair, or one of the rivalries below.");
     card.append(note, hint);
     container.append(card);
     clashThenShow();

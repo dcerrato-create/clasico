@@ -124,10 +124,11 @@ function createTeamPicker(root, teams) {
   };
 }
 
-// Builds the featured rivalry cards from FEATURED_RIVALRIES in config.js.
-function renderFeatured(container, teams, onPick) {
+// Builds one row of rivalry cards. `rivalries` is one of the lists in
+// config.js (FEATURED_CLASICOS or FIERCE_RIVALRIES).
+function renderFeatured(container, rivalries, teams, onPick) {
   container.replaceChildren();
-  for (const rivalry of FEATURED_RIVALRIES) {
+  for (const rivalry of rivalries) {
     // If the team list didn't load we still show the card, with placeholder flags.
     const teamA = teams.find((t) => t.name === rivalry.a) || { name: rivalry.a, code: null };
     const teamB = teams.find((t) => t.name === rivalry.b) || { name: rivalry.b, code: null };
@@ -152,7 +153,8 @@ function renderFeatured(container, teams, onPick) {
     tagline.className = "featured-tagline";
     tagline.textContent = rivalry.tagline;
 
-    card.append(flags, title, tagline);
+    card.append(flags, title);
+    if (rivalry.tagline) card.append(tagline); // only the named clásicos have one
     card.addEventListener("click", () => onPick(rivalry.a, rivalry.b));
     container.append(card);
   }
