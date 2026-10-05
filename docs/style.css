@@ -680,8 +680,8 @@ button:disabled { cursor: not-allowed; opacity: 0.6; }
   100% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
 }
 
-/* The rivalry's own name (Featured Clásicos only), above the flags. It
-   spreads in while the flags charge and punches forward when they hit. */
+/* The rivalry's own name (Featured Clásicos only), above the flags. It is
+   invisible until the flags hit, then slams in at the moment of impact. */
 .clash-title {
   top: 13vh;
   left: 4%;
@@ -695,16 +695,13 @@ button:disabled { cursor: not-allowed; opacity: 0.6; }
   text-transform: uppercase;
   color: #fff;
   text-shadow: 0 0 34px rgba(120, 170, 255, 0.95), 4px 4px 0 #000;
-  animation: clash-title-in 0.8s ease-out 0.15s both;
+  opacity: 0;
 }
-@keyframes clash-title-in {
-  from { opacity: 0; transform: translateY(-24px); letter-spacing: 0.45em; }
-  to   { opacity: 1; transform: none; letter-spacing: 0.03em; }
-}
-.impact .clash-title { animation: clash-title-hit 0.6s cubic-bezier(0.2, 1.4, 0.4, 1) both; }
+.impact .clash-title { animation: clash-title-hit 0.55s cubic-bezier(0.2, 1.4, 0.4, 1) both; }
 @keyframes clash-title-hit {
-  from { transform: scale(1.35); text-shadow: 0 0 60px #fff, 4px 4px 0 #000; }
-  to   { transform: scale(1); }
+  0%   { opacity: 0; transform: scale(4); text-shadow: 0 0 80px #fff, 4px 4px 0 #000; }
+  55%  { opacity: 1; transform: scale(0.92); }
+  100% { opacity: 1; transform: scale(1); }
 }
 
 .impact .clash-name { animation: clash-name 0.5s ease-out 0.3s both; }
@@ -849,6 +846,8 @@ button:disabled { cursor: not-allowed; opacity: 0.6; }
 .stage.quick .side-a { animation: quick-slam-a 0.85s cubic-bezier(0.2, 0.8, 0.3, 1) both; }
 .stage.quick .side-b { animation: quick-slam-b 0.85s cubic-bezier(0.2, 0.8, 0.3, 1) both; }
 .stage.quick .stage-vs { animation: quick-vs 0.4s ease 0.55s both; }
+/* in the quick version the clásico's name also pops in at the bump */
+.stage.quick .clasico-name { animation: quick-vs 0.4s ease 0.55s both; }
 @keyframes quick-slam-a {
   0%   { transform: translateX(-120vw) rotate(-10deg); }
   60%  { transform: translateX(22%) rotate(3deg); }
@@ -1380,6 +1379,6 @@ button:disabled { cursor: not-allowed; opacity: 0.6; }
 /* People who ask their device for less motion get no clash and no sliding. */
 @media (prefers-reduced-motion: reduce) {
   .step, .side-name, .stage-vs, .primary, .featured-card { transition: none; }
-  .stage.quick, .stage.quick .side, .stage.quick .stage-vs { animation: none; }
+  .stage.quick, .stage.quick .side, .stage.quick .stage-vs, .stage.quick .clasico-name { animation: none; }
   .era-bar, .era-num, .era-draw-num { transition: none; }
 }
