@@ -82,7 +82,8 @@ function createEraChart(panel, data, teamColors, onPickDecade) {
     // Each side holds that team's wins plus half of the draws.
     const longest = Math.max(1, ...decades.map((d) => Math.max(d.a_wins, d.b_wins) + d.draws / 2));
 
-    decades.forEach((record, index) => {
+    // The backend sends the oldest decade first; we show the newest on top.
+    [...decades].reverse().forEach((record, index) => {
       const delay = reducedMotion ? 0 : index * ERA_CHART.stagger;
       const row = makeEl("button", "era-row");
       row.type = "button";
