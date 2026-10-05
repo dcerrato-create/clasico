@@ -169,8 +169,11 @@ def assign_categories(matches):
 
     The chips are the tournaments these two teams really played each other in,
     so every rivalry gets its own list. World Cup and Friendlies are always
-    there (config.py), even with 0 matches. If there are too many tournaments,
-    the smallest ones share an "Other" chip.
+    there (config.py), even with 0 matches.
+
+    "Other" is only for one-off meetings: a tournament the teams met in more
+    than once ALWAYS gets its own chip. Tournaments with a single match also
+    get their own chip while there is room, and share "Other" when there isn't.
 
     Returns [{"id", "label", "matches"}, ...] in the order to show them, and
     sets match["category"] to the id of the chip that match belongs to.
@@ -182,8 +185,11 @@ def assign_categories(matches):
         (t for t in counts if t not in ALWAYS_SHOWN_TOURNAMENTS),
         key=lambda t: (-counts[t], t),
     )
-    room = MAX_TOURNAMENT_CHIPS - len(ALWAYS_SHOWN_TOURNAMENTS)
-    shown, grouped = others[:room], others[room:]
+    repeated = [t for t in others if counts[t] > 1]   # always get a chip
+    one_offs = [t for t in others if counts[t] == 1]  # may go to "Other"
+
+    room = max(MAX_TOURNAMENT_CHIPS - len(ALWAYS_SHOWN_TOURNAMENTS) - len(repeated), 0)
+    shown, grouped = repeated + one_offs[:room], one_offs[room:]
     if len(grouped) == 1:
         # An "Other" chip holding one tournament is pointless: just name it.
         shown, grouped = others, []

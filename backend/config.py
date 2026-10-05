@@ -23,8 +23,10 @@ TOURNAMENT_LABELS = {
     "African Cup of Nations": "Africa Cup of Nations",
 }
 
-# At most this many tournament chips (not counting "All"). If a rivalry has
-# more, the tournaments with the fewest matches are grouped under "Other".
+# Aim for at most this many tournament chips (not counting "All"). When a
+# rivalry has more, tournaments the teams met in only ONCE are grouped under
+# "Other". A tournament they met in more than once always keeps its own chip,
+# even if that means going over this number.
 MAX_TOURNAMENT_CHIPS = 8
 
 # ---------------------------------------------------------------------------
