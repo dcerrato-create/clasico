@@ -26,8 +26,8 @@ let pickerB;
 // and the chart both use the same colors.
 function applyColors() {
   const names = {
-    teamA: "--team-a", teamB: "--team-b", draw: "--draw", accent: "--accent",
-    background: "--bg", surface: "--surface", text: "--text", muted: "--muted",
+    background: "--bg", navy: "--navy", surface: "--surface", text: "--text",
+    muted: "--muted", accent: "--accent", draw: "--draw",
   };
   for (const [key, cssName] of Object.entries(names)) {
     if (COLORS[key]) document.documentElement.style.setProperty(cssName, COLORS[key]);
@@ -125,12 +125,20 @@ async function showRivalry() {
 function renderRivalry(data) {
   dom.result.hidden = false;
   dom.result.replaceChildren();
-  renderReveal(dom.result, data); // flags + headline (handles "never met" too)
+
+  // Each team wears its own color everywhere on the page (see colors.js).
+  const teamColors = pickTeamColors(data.team_a, data.team_b);
+  document.documentElement.style.setProperty("--team-a", teamColors.a);
+  document.documentElement.style.setProperty("--team-b", teamColors.b);
+
+  renderReveal(dom.result, data, teamColors); // clash + flags + headline
   if (data.summary.total_matches > 0) {
     renderStory(dom.result, data);
-    renderExplore(dom.result, data, state.categories);
+    renderExplore(dom.result, data, state.categories, teamColors);
   }
-  dom.result.scrollIntoView({ behavior: "smooth", block: "start" });
+  // Jump there right away: the clash covers the screen while this happens,
+  // and the big flags need to know where the small ones ended up.
+  dom.result.scrollIntoView({ behavior: "instant", block: "start" });
 }
 
 async function init() {

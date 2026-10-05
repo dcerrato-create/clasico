@@ -101,8 +101,8 @@ def rivalry():
     team_a, team_b = get_team_pair(request.args.get("team_a"), request.args.get("team_b"))
     matches = data.head_to_head(team_a, team_b)
     return jsonify({
-        "team_a": {"name": team_a, "code": data.FLAG_CODES.get(team_a)},
-        "team_b": {"name": team_b, "code": data.FLAG_CODES.get(team_b)},
+        "team_a": data.team_info(team_a),
+        "team_b": data.team_info(team_b),
         "summary": data.summarize(team_a, team_b, matches),
         "matches": matches,
     })

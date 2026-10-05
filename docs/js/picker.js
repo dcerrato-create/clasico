@@ -135,10 +135,14 @@ function renderFeatured(container, teams, onPick) {
     const card = document.createElement("button");
     card.type = "button";
     card.className = "featured-card";
+    // Each half of the card is tinted with that team's color.
+    const teamColors = pickTeamColors(teamA, teamB);
+    card.style.setProperty("--team-a", teamColors.a);
+    card.style.setProperty("--team-b", teamColors.b);
 
     const flags = document.createElement("span");
     flags.className = "featured-flags";
-    flags.append(createFlag(teamA), createFlag(teamB));
+    flags.append(createFlag(teamA), makeEl("span", "featured-vs", "VS"), createFlag(teamB));
 
     const title = document.createElement("span");
     title.className = "featured-title";

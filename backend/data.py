@@ -81,6 +81,11 @@ SHOOTOUTS = {
 with open(DATA_DIR / "flag_codes.json", encoding="utf-8") as f:
     FLAG_CODES = json.load(f)
 
+# Each team's colors, main color first: {"Brazil": ["#009c3b", "#ffdf00", ...]}.
+# Teams that are not in the file get an empty list (the app uses default colors).
+with open(DATA_DIR / "team_colors.json", encoding="utf-8") as f:
+    TEAM_COLORS = json.load(f)
+
 TEAM_NAMES = sorted(
     {m["home_team"] for m in MATCHES} | {m["away_team"] for m in MATCHES}
 )
@@ -113,12 +118,18 @@ def resolve_team(text):
     return _LOOKUP.get(_normalize(text or ""))
 
 
+def team_info(name):
+    """What the frontend needs to draw a team: name, flag code and colors."""
+    return {
+        "name": name,
+        "code": FLAG_CODES.get(name),         # None when we have no flag
+        "colors": TEAM_COLORS.get(name, []),  # main color first
+    }
+
+
 def list_teams():
-    """All teams for the picker: name, flag code (or None) and aliases."""
-    return [
-        {"name": name, "code": FLAG_CODES.get(name), "aliases": ALIASES[name]}
-        for name in TEAM_NAMES
-    ]
+    """All teams for the picker, with the other names they can be found under."""
+    return [{**team_info(name), "aliases": ALIASES[name]} for name in TEAM_NAMES]
 
 
 def head_to_head(team_a, team_b):

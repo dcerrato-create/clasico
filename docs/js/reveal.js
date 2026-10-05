@@ -1,6 +1,6 @@
-// reveal.js - the flag "clash" animation and the headline stats that count up.
-// The sliding itself is done in CSS (see "Flag reveal" in style.css);
-// this file builds the elements and runs the number counters in order.
+// reveal.js - the rivalry card: the two flags and the headline stats.
+// It first plays the full-screen clash (clash.js). When the big flags have
+// shrunk into this card, the numbers count up one after another.
 
 const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
@@ -56,18 +56,29 @@ function buildRecordItem(kind, label) {
 }
 
 // Builds the reveal card inside `container` and plays the animation.
-function renderReveal(container, data) {
+// teamColors = { a, b, draw } from pickTeamColors() in colors.js.
+function renderReveal(container, data, teamColors) {
   const { team_a: teamA, team_b: teamB, summary } = data;
 
   const card = makeEl("section", "card reveal");
   card.setAttribute("aria-label", `${teamA.name} versus ${teamB.name}`);
 
   // --- The stage: flag, clash, flag ---
-  const stage = makeEl("div", "stage");
-  const clash = makeEl("div", "clash");
-  clash.append(makeEl("span", "burst"), makeEl("span", "clash-vs", "VS"));
-  stage.append(buildSide(teamA, "side-a"), clash, buildSide(teamB, "side-b"));
+  // "pending" hides the small flags until the big ones land on them.
+  const stage = makeEl("div", "stage pending");
+  const sideA = buildSide(teamA, "side-a");
+  const sideB = buildSide(teamB, "side-b");
+  stage.append(sideA, makeEl("div", "stage-vs", "VS"), sideB);
   card.append(stage);
+
+  // Plays the clash, then shows the small flags in the card.
+  async function clashThenShow() {
+    await playClash(teamA, teamB, teamColors, {
+      a: sideA.querySelector(".flag"),
+      b: sideB.querySelector(".flag"),
+    });
+    stage.classList.remove("pending");
+  }
 
   // --- Teams that never met: flags plus a friendly note, no stats ---
   if (summary.total_matches === 0) {
@@ -76,6 +87,7 @@ function renderReveal(container, data) {
     const hint = makeEl("p", "never-met-hint", "Try another pair, or one of the featured rivalries below.");
     card.append(note, hint);
     container.append(card);
+    clashThenShow();
     return;
   }
 
@@ -125,7 +137,8 @@ function renderReveal(container, data) {
 
   // --- Play the numbers in order, after the flags have clashed ---
   (async () => {
-    await wait(1000);
+    await clashThenShow();
+    await wait(150);
     total.classList.add("show");
     await countUp(totalNumber, summary.total_matches);
     record.classList.add("show");

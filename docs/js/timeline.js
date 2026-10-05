@@ -111,8 +111,8 @@ function buildDatasets(matches, data, colors) {
   }));
 }
 
-function renderExplore(container, data, categories) {
-  const colors = { a: COLORS.teamA, draw: COLORS.draw, b: COLORS.teamB };
+function renderExplore(container, data, categories, teamColors) {
+  const colors = teamColors; // { a, b, draw } - each team's own color
   const allMatches = data.matches;
   let activeFilter = "all";
 
