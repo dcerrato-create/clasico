@@ -7,27 +7,25 @@ change it without touching the rest of the backend.
 
 # ---------------------------------------------------------------------------
 # TOURNAMENT FILTERS
-# The filter chips in the app. Each match gets exactly one category.
-# "match" is compared against the tournament name in results.csv.
+# The filter chips are different for every rivalry: they are the tournaments
+# those two teams actually met in. Only the ones listed here are shown for
+# EVERY rivalry, even when the teams never met in them.
+# Names must match the "tournament" column in results.csv.
 # ---------------------------------------------------------------------------
-TOURNAMENT_CATEGORIES = [
-    # (category id,   label shown on the chip)
-    ("world_cup",     "World Cup"),
-    ("copa_america",  "Copa América"),
-    ("gold_cup",      "Gold Cup"),
-    ("qualifiers",    "Qualifiers"),
-    ("friendlies",    "Friendlies"),
-    ("other",         "Other"),
-]
+ALWAYS_SHOWN_TOURNAMENTS = ["FIFA World Cup", "Friendly"]
 
-# Exact tournament names -> category. Anything with "qualification" in the
-# name becomes "qualifiers"; anything not listed becomes "other".
-TOURNAMENT_NAME_TO_CATEGORY = {
-    "FIFA World Cup": "world_cup",
-    "Copa América": "copa_america",
-    "Gold Cup": "gold_cup",
-    "Friendly": "friendlies",
+# Nicer names for the chips. Anything not listed keeps its dataset name.
+# "... qualification" automatically becomes "... qualifiers".
+TOURNAMENT_LABELS = {
+    "FIFA World Cup": "World Cup",
+    "Friendly": "Friendlies",
+    "UEFA Euro": "UEFA European Championship",
+    "African Cup of Nations": "Africa Cup of Nations",
 }
+
+# At most this many tournament chips (not counting "All"). If a rivalry has
+# more, the tournaments with the fewest matches are grouped under "Other".
+MAX_TOURNAMENT_CHIPS = 8
 
 # ---------------------------------------------------------------------------
 # EXTRA SEARCH NAMES

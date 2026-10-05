@@ -2,8 +2,7 @@
 
 // Everything the page currently knows.
 const state = {
-  teams: [],       // [{ name, code, aliases }] from /api/teams
-  categories: [],  // tournament filter chips from /api/teams
+  teams: [],       // [{ name, code, colors, aliases }] from /api/teams
   rivalry: null,   // the last /api/rivalry answer
   requestId: 0,    // lets us ignore answers to old requests
 };
@@ -53,7 +52,6 @@ async function loadTeams() {
     // Keep the same array object: the pickers hold a reference to it.
     state.teams.length = 0;
     state.teams.push(...data.teams);
-    state.categories = data.categories;
     dom.banner.hidden = true;
   } catch (err) {
     dom.bannerText.textContent = err.message;
@@ -140,7 +138,7 @@ function renderRivalry(data) {
   dom.skipToggle.hidden = false;
   if (data.summary.total_matches > 0) {
     renderStory(dom.result, data);
-    renderExplore(dom.result, data, state.categories, teamColors);
+    renderExplore(dom.result, data, teamColors);
   }
   // Jump there right away: the clash covers the screen while this happens,
   // and the big flags need to know where the small ones ended up.

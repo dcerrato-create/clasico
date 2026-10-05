@@ -19,7 +19,6 @@ load_dotenv(Path(__file__).parent.parent / ".env")
 
 import data  # noqa: E402  (imported after load_dotenv on purpose)
 import story  # noqa: E402
-from config import TOURNAMENT_CATEGORIES  # noqa: E402
 from errors import ApiError  # noqa: E402
 
 app = Flask(__name__)
@@ -84,11 +83,8 @@ def health():
 
 @app.get("/api/teams")
 def teams():
-    """All teams for the picker, plus the tournament filter chips."""
-    return jsonify({
-        "teams": data.list_teams(),
-        "categories": [{"id": cid, "label": label} for cid, label in TOURNAMENT_CATEGORIES],
-    })
+    """All teams for the picker."""
+    return jsonify({"teams": data.list_teams()})
 
 
 @app.get("/api/rivalry")
@@ -100,10 +96,13 @@ def rivalry():
     """
     team_a, team_b = get_team_pair(request.args.get("team_a"), request.args.get("team_b"))
     matches = data.head_to_head(team_a, team_b)
+    # The filter chips for THIS rivalry (also tags each match with its chip).
+    categories = data.assign_categories(matches)
     return jsonify({
         "team_a": data.team_info(team_a),
         "team_b": data.team_info(team_b),
         "summary": data.summarize(team_a, team_b, matches),
+        "categories": categories,
         "matches": matches,
     })
 

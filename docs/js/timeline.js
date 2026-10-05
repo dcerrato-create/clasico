@@ -111,7 +111,10 @@ function buildDatasets(matches, data, colors) {
   }));
 }
 
-function renderExplore(container, data, categories, teamColors) {
+function renderExplore(container, data, teamColors) {
+  // The filter chips for this rivalry, chosen by the backend: World Cup and
+  // Friendlies always, plus the tournaments these two teams really met in.
+  const categories = data.categories;
   const colors = teamColors; // { a, b, draw } - each team's own color
   const allMatches = data.matches;
   let activeFilter = "all";
@@ -132,7 +135,7 @@ function renderExplore(container, data, categories, teamColors) {
     tabs.append(tab);
   }
 
-  // --- Filter chips: "All" plus one per tournament category ---
+  // --- Filter chips: "All" plus one per tournament ---
   const chips = makeEl("div", "chips");
   chips.setAttribute("role", "group");
   chips.setAttribute("aria-label", "Filter by tournament");
@@ -146,6 +149,7 @@ function renderExplore(container, data, categories, teamColors) {
     chip.dataset.filter = category.id;
     chip.append(makeEl("span", "chip-count", String(count)));
     chip.disabled = count === 0; // nothing to show for this tournament
+    if (category.includes) chip.title = category.includes.join(", "); // what "Other" holds
     chip.addEventListener("click", () => {
       activeFilter = category.id;
       update();

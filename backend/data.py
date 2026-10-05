@@ -14,7 +14,7 @@ import unicodedata
 from collections import Counter
 from pathlib import Path
 
-from config import EXTRA_ALIASES, TOURNAMENT_CATEGORIES, TOURNAMENT_NAME_TO_CATEGORY
+from config import ALWAYS_SHOWN_TOURNAMENTS, EXTRA_ALIASES, MAX_TOURNAMENT_CHIPS, TOURNAMENT_LABELS
 
 DATA_DIR = Path(__file__).parent / "data"
 
@@ -30,13 +30,13 @@ def _normalize(text):
     return "".join(ch for ch in decomposed if unicodedata.category(ch) != "Mn")
 
 
-def categorize(tournament):
-    """Turn a tournament name into one of our filter categories."""
-    if tournament in TOURNAMENT_NAME_TO_CATEGORY:
-        return TOURNAMENT_NAME_TO_CATEGORY[tournament]
-    if "qualification" in tournament.lower():
-        return "qualifiers"
-    return "other"
+def tournament_label(tournament):
+    """The name shown on a filter chip, e.g.
+    "FIFA World Cup qualification" -> "World Cup qualifiers"."""
+    suffix = " qualification"
+    if tournament.endswith(suffix):
+        return tournament_label(tournament[: -len(suffix)]) + " qualifiers"
+    return TOURNAMENT_LABELS.get(tournament, tournament)
 
 
 # ---------------------------------------------------------------------------
@@ -155,7 +155,6 @@ def head_to_head(team_a, team_b):
             "b_goals": b_goals,
             "winner": winner,
             "margin": abs(a_goals - b_goals),
-            "category": categorize(m["tournament"]),
             # A shootout does not change the result: the match still counts
             # as a draw, and we report who won the shootout separately.
             "shootout_winner": SHOOTOUTS.get(key),
@@ -163,6 +162,47 @@ def head_to_head(team_a, team_b):
         })
     matches.sort(key=lambda m: m["date"])
     return matches
+
+
+def assign_categories(matches):
+    """Work out the filter chips for one rivalry and tag every match with one.
+
+    The chips are the tournaments these two teams really played each other in,
+    so every rivalry gets its own list. World Cup and Friendlies are always
+    there (config.py), even with 0 matches. If there are too many tournaments,
+    the smallest ones share an "Other" chip.
+
+    Returns [{"id", "label", "matches"}, ...] in the order to show them, and
+    sets match["category"] to the id of the chip that match belongs to.
+    """
+    counts = Counter(m["tournament"] for m in matches)
+
+    # Every other tournament they met in, most matches first.
+    others = sorted(
+        (t for t in counts if t not in ALWAYS_SHOWN_TOURNAMENTS),
+        key=lambda t: (-counts[t], t),
+    )
+    room = MAX_TOURNAMENT_CHIPS - len(ALWAYS_SHOWN_TOURNAMENTS)
+    shown, grouped = others[:room], others[room:]
+    if len(grouped) == 1:
+        # An "Other" chip holding one tournament is pointless: just name it.
+        shown, grouped = others, []
+
+    categories = [
+        {"id": t, "label": tournament_label(t), "matches": counts.get(t, 0)}
+        for t in ALWAYS_SHOWN_TOURNAMENTS + shown
+    ]
+    if grouped:
+        categories.append({
+            "id": "other",
+            "label": "Other",
+            "matches": sum(counts[t] for t in grouped),
+            "includes": [tournament_label(t) for t in grouped],
+        })
+
+    for m in matches:
+        m["category"] = "other" if m["tournament"] in grouped else m["tournament"]
+    return categories
 
 
 def _short(match):
@@ -186,19 +226,19 @@ def summarize(team_a, team_b, matches):
     a_goals = sum(m["a_goals"] for m in matches)
     b_goals = sum(m["b_goals"] for m in matches)
 
-    # Record split by tournament category (only categories that have matches).
+    # Record split by tournament, most matches first.
     by_category = []
-    for category_id, label in TOURNAMENT_CATEGORIES:
-        group = [m for m in matches if m["category"] == category_id]
-        if group:
-            by_category.append({
-                "id": category_id,
-                "label": label,
-                "matches": len(group),
-                "a_wins": sum(m["winner"] == "a" for m in group),
-                "draws": sum(m["winner"] == "draw" for m in group),
-                "b_wins": sum(m["winner"] == "b" for m in group),
-            })
+    tournament_counts = Counter(m["tournament"] for m in matches)
+    for tournament, count in tournament_counts.most_common():
+        group = [m for m in matches if m["tournament"] == tournament]
+        by_category.append({
+            "id": tournament,
+            "label": tournament_label(tournament),
+            "matches": count,
+            "a_wins": sum(m["winner"] == "a" for m in group),
+            "draws": sum(m["winner"] == "draw" for m in group),
+            "b_wins": sum(m["winner"] == "b" for m in group),
+        })
 
     # Top scorers (own goals do not count for the player).
     goal_counts = Counter()

@@ -50,11 +50,27 @@ function colorFamily(hex) {
   return "purple";
 }
 
-// Dark colors (like navy) would vanish on our dark page, so lift them.
+// How bright a color looks to the eye, from 0 (black) to 1 (white).
+// Blue looks much darker than green at the same strength, so each of
+// red, green and blue counts for a different amount.
+function brightness(hex) {
+  const channel = (start) => {
+    const v = parseInt(hex.slice(start, start + 2), 16) / 255;
+    return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4);
+  };
+  return 0.2126 * channel(1) + 0.7152 * channel(3) + 0.0722 * channel(5);
+}
+
+// Dark colors (like navy) would vanish on our dark page, so lighten them
+// step by step until they are bright enough to see.
 function makeVisible(hex) {
   const hsl = hexToHsl(hex);
-  if (hsl.l >= 0.32) return hex;
-  return hslToHex({ ...hsl, l: 0.32 });
+  let color = hex;
+  while (brightness(color) < 0.1 && hsl.l < 0.7) {
+    hsl.l += 0.02;
+    color = hslToHex(hsl);
+  }
+  return color;
 }
 
 // Returns { a, b, draw } - the colors to use for this pair of teams.
