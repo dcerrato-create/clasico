@@ -24,6 +24,7 @@ const dom = {
 
 let pickerA;
 let pickerB;
+let recentSection; // "Recent Games per Country" (so the Home button can clear it)
 
 // Copy the COLORS from config.js into CSS variables, so the stylesheet
 // and the chart both use the same colors.
@@ -125,6 +126,36 @@ async function showRivalry() {
   }
 }
 
+// The Home button: back to the empty team picker, with everything cleared.
+function resetHome() {
+  state.requestId++;   // ignore a rivalry that is still loading
+  cancelStory();       // stop an AI Story that is still being written
+  const clash = document.querySelector(".clash-overlay");
+  if (clash) clash.click(); // skip a clash animation that is still playing
+
+  // The rivalry on screen
+  state.rivalry = null;
+  removeTimelineChart();
+  dom.result.hidden = true;
+  dom.result.replaceChildren();
+  // The team picker and its message
+  pickerA.setValue("");
+  pickerB.setValue("");
+  clearMessage();
+  dom.goButton.disabled = false;
+  dom.goButton.textContent = "Show the rivalry";
+  // Recent Games per Country
+  if (recentSection) recentSection.reset();
+
+  // The address bar (removes ?a=...&b=...)
+  try {
+    history.replaceState(null, "", location.pathname);
+  } catch (err) {
+    // Some browsers block this for local files. It's only a nicety.
+  }
+  window.scrollTo({ top: 0, behavior: "smooth" });
+}
+
 // Draw everything for one rivalry.
 function renderRivalry(data) {
   cancelStory(); // stop the previous rivalry's AI Story if it is still being written
@@ -167,7 +198,14 @@ async function init() {
   await loadTeams();
 
   // "Recent Games per Country": clicking one of a team's games opens that rivalry.
-  createRecentSection(state.teams, pickRivalry);
+  recentSection = createRecentSection(state.teams, pickRivalry);
+
+  // The Home button, and the CLÁSICO logo, both go back to the start.
+  document.getElementById("home-button").addEventListener("click", resetHome);
+  document.getElementById("logo").addEventListener("click", (event) => {
+    event.preventDefault(); // don't reload the page; resetting is quicker
+    resetHome();
+  });
 
   // Open a shared link like index.html?a=Argentina&b=Brazil
   const params = new URLSearchParams(location.search);

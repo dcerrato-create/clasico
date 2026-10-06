@@ -9,11 +9,16 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Anton&family=Bebas+Neue&family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css?v=9">
+  <link rel="stylesheet" href="style.css?v=10">
 </head>
 <body>
+  <!-- Always on screen: goes back to the start and clears everything (see resetHome in js/main.js) -->
+  <button type="button" id="home-button" class="home-button" aria-label="Home: back to the start">
+    <span aria-hidden="true">⌂</span> Home
+  </button>
+
   <header class="site-header">
-    <a class="logo" href="./index.html">CL<span>Á</span>SICO</a>
+    <a class="logo" id="logo" href="./index.html">CL<span>Á</span>SICO</a>
     <p class="tagline"><span>Every national-team rivalry</span> <span>match by match</span></p>
   </header>
 

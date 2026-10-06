@@ -6,7 +6,7 @@
 
 // Sets up the section. `teams` is the team list from main.js and
 // onPickRivalry(teamA, teamB) opens a rivalry (the same function the
-// featured cards use).
+// featured cards use). Returns { reset } for the Home button.
 function createRecentSection(teams, onPickRivalry) {
   const form = document.getElementById("recent-form");
   const results = document.getElementById("recent-results");
@@ -87,8 +87,14 @@ function createRecentSection(teams, onPickRivalry) {
     show(picker.getValue());
   });
 
-  if (RECENT.defaultTeam) {
+  // Back to how the section looks when the page opens (used by the Home button).
+  function reset() {
+    requestId++; // ignore any answer that is still on its way
     picker.setValue(RECENT.defaultTeam);
-    show(RECENT.defaultTeam);
+    results.replaceChildren();
+    if (RECENT.defaultTeam) show(RECENT.defaultTeam);
   }
+
+  reset();
+  return { reset };
 }

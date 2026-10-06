@@ -6,6 +6,14 @@
 
 let timelineChart = null; // the current Chart.js chart, so we can remove it later
 
+// Throw away the current chart (used when a new rivalry is drawn, and by the Home button).
+function removeTimelineChart() {
+  if (timelineChart) {
+    timelineChart.destroy();
+    timelineChart = null;
+  }
+}
+
 // "1969-06-08" -> 1969.43 (so matches spread out inside their year)
 function decimalYear(dateText) {
   const [year, month, day] = dateText.split("-").map(Number);
@@ -266,10 +274,7 @@ function renderExplore(container, data, teamColors) {
   }
 
   // --- Create the chart ---
-  if (timelineChart) {
-    timelineChart.destroy();
-    timelineChart = null;
-  }
+  removeTimelineChart();
   const firstYear = Number(allMatches[0].date.slice(0, 4));
   const lastYear = Number(allMatches[allMatches.length - 1].date.slice(0, 4));
 
