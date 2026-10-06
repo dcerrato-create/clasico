@@ -5,6 +5,7 @@ const state = {
   teams: [],       // [{ name, code, colors, aliases }] from /api/teams
   rivalry: null,   // the last /api/rivalry answer
   requestId: 0,    // lets us ignore answers to old requests
+  openedFromLink: false, // is the rivalry on screen the one from the page's address?
 };
 
 const dom = {
@@ -126,6 +127,7 @@ async function showRivalry() {
 
 // Draw everything for one rivalry.
 function renderRivalry(data) {
+  cancelStory(); // stop the previous rivalry's AI Story if it is still being written
   dom.result.hidden = false;
   dom.result.replaceChildren();
 
@@ -140,7 +142,10 @@ function renderRivalry(data) {
   // The first rivalry always gets the full clash; after it, offer the checkbox.
   dom.skipToggle.hidden = false;
   if (data.summary.total_matches > 0) {
-    renderStory(dom.result, data);
+    // Opened from a shared link? Then don't write a NEW story until asked:
+    // just loading a page should never spend OpenAI credits.
+    renderStory(dom.result, data, { askFirst: state.openedFromLink });
+    state.openedFromLink = false; // every later rivalry is one the visitor picked
     renderExplore(dom.result, data, teamColors);
   }
   // Jump there right away: the clash covers the screen while this happens,
@@ -167,6 +172,7 @@ async function init() {
   // Open a shared link like index.html?a=Argentina&b=Brazil
   const params = new URLSearchParams(location.search);
   if (params.get("a") && params.get("b")) {
+    state.openedFromLink = true; // true only for this first, automatic rivalry
     pickRivalry(params.get("a"), params.get("b"));
   }
 }

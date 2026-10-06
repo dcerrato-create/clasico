@@ -5,12 +5,13 @@ the real work happens in data.py (statistics) and story.py (AI Story).
 Run locally:  python app.py   (listens on http://127.0.0.1:5001)
 """
 
+import json
 import os
 from datetime import date
 from pathlib import Path
 
 from dotenv import load_dotenv
-from flask import Flask, jsonify, request
+from flask import Flask, Response, jsonify, request, stream_with_context
 from flask_cors import CORS
 from werkzeug.exceptions import HTTPException
 
@@ -195,30 +196,68 @@ def stats():
 
 @app.post("/api/story")
 def ai_story():
-    """The AI Story paragraph for a matchup.
+    """The AI Story for a matchup, sent piece by piece as it is written.
 
     Send JSON like {"team_a": "Honduras", "team_b": "El Salvador", "lang": "en"}.
-    The statistics are computed here on the server, so the browser can't
-    make the model write about made-up numbers.
+    Add "cached_only": true to ask "do you already have this story?" without
+    ever calling OpenAI (the page uses that when it opens from a shared link).
+
+    The answer is a stream of lines, each one a small JSON object:
+        {"type": "start", "cached": false, "model": "gpt-5.4"}
+        {"type": "text", "text": "Few rivalries "}      (many of these)
+        {"type": "done"}
+    or  {"type": "error", "message": "..."}  if OpenAI fails halfway.
+    Problems found before any text exists (bad team, rate limit, no key...)
+    come back as a normal JSON error instead.
     """
     body = request.get_json(silent=True)
     if not isinstance(body, dict):
         body = {}
     team_a, team_b = get_team_pair(body.get("team_a"), body.get("team_b"))
-    # Alphabetical order, so "Brazil vs Argentina" reuses the cached
-    # "Argentina vs Brazil" story.
-    team_a, team_b = sorted([team_a, team_b])
+    lang = str(body.get("lang", "en")).lower()
+    story.check_language(lang)
 
     matches = data.head_to_head(team_a, team_b)
     if not matches:
         raise ApiError(f"{team_a} and {team_b} have never played each other, so there is no story to tell.", 404)
 
-    # Behind a host like Render the visitor's address arrives in this header.
-    visitor = request.headers.get("X-Forwarded-For", request.remote_addr or "unknown").split(",")[0].strip()
-    lang = str(body.get("lang", "en")).lower()
-    text, cached = story.get_story(data.summarize(team_a, team_b, matches), lang, visitor)
-    return jsonify({"story": text, "lang": lang, "cached": cached})
+    cached = story.get_cached(team_a, team_b, matches, lang)
+    if cached is None and body.get("cached_only"):
+        return jsonify({"cached": False})  # not written yet, and we were told not to write it
+
+    if cached:
+        model = cached["model"]
+        pieces = iter([cached["story"]])  # the whole saved story, in one piece
+    else:
+        # Behind a host like Render the visitor's address arrives in this header.
+        visitor = request.headers.get("X-Forwarded-For", request.remote_addr or "unknown").split(",")[0].strip()
+        model, pieces = story.start_story(team_a, team_b, matches, lang, visitor)  # the one OpenAI call
+
+    def line(event):
+        return json.dumps(event, ensure_ascii=False) + "\n"
+
+    def send():
+        yield line({"type": "start", "cached": cached is not None, "model": model})
+        try:
+            for text in pieces:
+                yield line({"type": "text", "text": text})
+            yield line({"type": "done"})
+        except ApiError as err:
+            yield line({"type": "error", "message": err.message})
+        finally:
+            # If the visitor left (changed rivalry or language), this stops
+            # the story and closes the call to OpenAI.
+            if hasattr(pieces, "close"):
+                pieces.close()
+
+    return Response(
+        stream_with_context(send()),
+        mimetype="application/x-ndjson",
+        # Tell browsers and hosting proxies to pass each line on immediately.
+        headers={"Cache-Control": "no-store", "X-Accel-Buffering": "no"},
+    )
 
 
 if __name__ == "__main__":
-    app.run(host="127.0.0.1", port=5001, debug=False)
+    # threaded=True lets the server answer other requests while a story is streaming.
+    app.run(host="127.0.0.1", port=5001, debug=False, threaded=True)

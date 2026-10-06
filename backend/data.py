@@ -458,17 +458,6 @@ def summarize(team_a, team_b, matches):
             "b_wins": sum(m["winner"] == "b" for m in group),
         })
 
-    # Top scorers (own goals do not count for the player).
-    goal_counts = Counter()
-    for m in matches:
-        for g in m["scorers"]:
-            if not g["own_goal"] and g["scorer"] and g["scorer"] != "NA":
-                goal_counts[(g["scorer"], g["team"])] += 1
-    top_scorers = [
-        {"scorer": scorer, "team": team, "goals": goals}
-        for (scorer, team), goals in goal_counts.most_common(5)
-    ]
-
     shootouts = [m for m in matches if m["shootout_winner"]]
 
     return {
@@ -489,10 +478,6 @@ def summarize(team_a, team_b, matches):
             max(matches, key=lambda m: m["a_goals"] + m["b_goals"], default=None)
         ),
         "by_category": by_category,
-        "top_scorers": top_scorers,
-        # The dataset only lists goalscorers for some matches (mostly
-        # competitive ones), so the scorer numbers are partial.
-        "matches_with_scorer_data": sum(1 for m in matches if m["scorers"]),
         "shootouts": {
             "total": len(shootouts),
             "a_wins": sum(m["shootout_winner"] == team_a for m in shootouts),

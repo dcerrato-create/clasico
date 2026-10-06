@@ -1,14 +1,22 @@
 """
-story.py - writes the "AI Story" paragraph with the OpenAI API.
+story.py - writes the "AI Story" paragraph with the OpenAI API, live.
 
-Three things protect the OpenAI credits:
-  1. Cache: each matchup + language is written once and saved to a file.
-  2. Rate limit: a visitor can only ask for a few NEW stories per minute,
-     and there is a daily cap for everyone combined.
-  3. The API key lives only in .env (OPENAI_API_KEY) and never reaches the browser.
+How one story is made:
+  1. build_facts() gathers the numbers we already computed for the rivalry.
+     Those facts are the ONLY thing the model is given (see STORY_PROMPT in
+     config.py, which tells it to use nothing else).
+  2. start_story() makes exactly ONE call to OpenAI and hands back the text
+     piece by piece as it is generated, so the page can show it being typed.
+  3. When the story is complete it is saved in backend/cache/stories.json.
 
-The model only receives the statistics we computed from the dataset, and the
-prompt (in config.py) tells it to use nothing else.
+What protects the OpenAI credits:
+  - Cache: a rivalry + language is only ever written once, even after a
+    restart. Team order does not matter (Brazil v Argentina = Argentina v Brazil).
+  - One call per story, no automatic retries, and a cap on the length.
+  - If the visitor leaves mid-story, the call to OpenAI is closed.
+  - Rate limit: each visitor gets a few new stories per minute and per day,
+    and there is a daily cap for everyone combined.
+  - The key lives only in .env (OPENAI_API_KEY) and never reaches the browser.
 """
 
 import json
@@ -20,25 +28,31 @@ from pathlib import Path
 
 import openai
 
+import data
 from config import (
     DEFAULT_OPENAI_MODEL,
     STORY_LANGUAGES,
     STORY_LIMIT_PER_DAY,
     STORY_LIMIT_PER_VISITOR,
+    STORY_LIMIT_PER_VISITOR_PER_DAY,
     STORY_LIMIT_WINDOW_SECONDS,
+    STORY_MAX_TOKENS,
     STORY_PROMPT,
+    STORY_TIMEOUT_SECONDS,
 )
 from errors import ApiError
 
 CACHE_FILE = Path(__file__).parent / "cache" / "stories.json"
 
-_lock = threading.Lock()   # one request at a time may touch the cache/counters
-_recent_requests = {}      # visitor IP -> list of times they asked for a new story
-_daily = {"day": date.today(), "count": 0}
+_lock = threading.Lock()   # one request at a time may touch the things below
+_in_progress = set()       # stories being written right now (so none is written twice at once)
+_recent_requests = {}      # visitor -> times they started a new story (last minute)
+_visitor_daily = {}        # visitor -> how many new stories they started today
+_daily = {"day": date.today(), "count": 0}  # new stories today, everyone combined
 
 
 # ---------------------------------------------------------------------------
-# Cache (a JSON file: {"Argentina|Brazil|en|110|2025-03-25": "story text"})
+# Cache: {"Argentina|Brazil|en|110|2025-03-25": {"story": "...", "model": "gpt-5.4"}}
 # ---------------------------------------------------------------------------
 
 def _load_cache():
@@ -52,19 +66,23 @@ def _load_cache():
 _cache = _load_cache()
 
 
-def _save_cache():
-    CACHE_FILE.parent.mkdir(exist_ok=True)
-    with open(CACHE_FILE, "w", encoding="utf-8") as f:
-        json.dump(_cache, f, ensure_ascii=False, indent=1)
-
-
-def _cache_key(summary, lang):
+def _cache_key(team_a, team_b, matches, lang):
+    # Alphabetical order, so both ways of picking the two teams share a story.
     # The match count and latest date are part of the key, so a story is
-    # rewritten automatically when the dataset gets new matches.
-    return "|".join([
-        summary["team_a"], summary["team_b"], lang,
-        str(summary["total_matches"]), summary["latest_match"]["date"],
-    ])
+    # written again automatically when the dataset gets new matches.
+    first, second = sorted([team_a, team_b])
+    return "|".join([first, second, lang, str(len(matches)), matches[-1]["date"]])
+
+
+def check_language(lang):
+    if lang not in STORY_LANGUAGES:
+        raise ApiError("The story is only available in English (en) or Spanish (es).", 400)
+
+
+def get_cached(team_a, team_b, matches, lang):
+    """The saved story as {"story", "model"}, or None if it was never written."""
+    with _lock:
+        return _cache.get(_cache_key(team_a, team_b, matches, lang))
 
 
 # ---------------------------------------------------------------------------
@@ -72,20 +90,26 @@ def _cache_key(summary, lang):
 # ---------------------------------------------------------------------------
 
 def _check_rate_limit(visitor):
+    """Count one new story for this visitor, or raise a friendly error."""
     now = time.time()
+    today = date.today()
 
-    if _daily["day"] != date.today():
-        _daily["day"] = date.today()
+    if _daily["day"] != today:  # a new day: start counting again
+        _daily["day"] = today
         _daily["count"] = 0
+        _visitor_daily.clear()
     if _daily["count"] >= STORY_LIMIT_PER_DAY:
-        raise ApiError("The AI Story has reached its daily limit. Please come back tomorrow.", 429)
+        raise ApiError("The AI writer has reached its limit for today. Please come back tomorrow.", 429)
+    if _visitor_daily.get(visitor, 0) >= STORY_LIMIT_PER_VISITOR_PER_DAY:
+        raise ApiError("You've reached today's limit of new AI stories. Stories you already opened still work.", 429)
 
     recent = [t for t in _recent_requests.get(visitor, []) if now - t < STORY_LIMIT_WINDOW_SECONDS]
     if len(recent) >= STORY_LIMIT_PER_VISITOR:
-        raise ApiError("You're asking for stories very quickly. Please wait a minute and try again.", 429)
+        raise ApiError("You're asking for new stories very quickly. Please wait a minute and try again.", 429)
 
     recent.append(now)
     _recent_requests[visitor] = recent
+    _visitor_daily[visitor] = _visitor_daily.get(visitor, 0) + 1
     _daily["count"] += 1
 
 
@@ -93,87 +117,155 @@ def _check_rate_limit(visitor):
 # The facts we send to the model
 # ---------------------------------------------------------------------------
 
-def build_facts(summary):
-    """Rewrite the summary with the team names spelled out, so the model
-    can't mix up 'team a' and 'team b'."""
-    a, b = summary["team_a"], summary["team_b"]
+def build_facts(team_a, team_b, matches):
+    """A compact summary of the rivalry with the team names spelled out, so
+    the model can't mix up 'team a' and 'team b'. Everything comes from the
+    same functions that feed the rest of the page."""
+    a, b = team_a, team_b
+    overview = data.overview(matches, today=date.today())
+    book = data.record_book(a, b, matches)
+    shootouts = data.shootout_stats(a, b, matches)
+
+    # Facts are given as plain values (not ready-made English phrases), so
+    # the model has to write its own sentence in whichever language it uses.
+    def day(iso_date):  # "2000-09-02" -> "2 September 2000"
+        d = date.fromisoformat(iso_date)
+        return f"{d.day} {d.strftime('%B %Y')}"
+
+    def match_fact(match):
+        if not match:
+            return None
+        return {
+            "date": day(match["date"]),
+            "home_team": match["home_team"], "home_goals": match["home_score"],
+            "away_team": match["away_team"], "away_goals": match["away_score"],
+            "competition": "friendly match" if match["tournament"] == "Friendly" else data.tournament_label(match["tournament"]),
+            "city": match["city"],
+        }
+
+    def streak_fact(streak):
+        return streak and {"matches_in_a_row": streak["length"], "from": day(streak["start"]), "to": day(streak["end"])}
+
+    def record_fact(record):
+        return {"matches": record["matches"], f"{a} wins": record["a_wins"],
+                "draws": record["draws"], f"{b} wins": record["b_wins"]}
+
+    def biggest(short):  # find the full match behind a record-book entry
+        return short and next(m for m in matches if m["date"] == short["date"])
+
+    decades = data.decade_records(matches, matches)
     return {
         "teams": [a, b],
-        "total_matches": summary["total_matches"],
-        "record": {f"{a} wins": summary["a_wins"], "draws": summary["draws"], f"{b} wins": summary["b_wins"]},
-        "goals": {a: summary["a_goals"], b: summary["b_goals"], "total": summary["total_goals"]},
-        "first_match": summary["first_match"],
-        "latest_match": summary["latest_match"],
-        f"biggest {a} win": summary["biggest_a_win"],
-        f"biggest {b} win": summary["biggest_b_win"],
-        "highest_scoring_match": summary["highest_scoring"],
-        "record_by_competition": [
-            {
-                "competition": c["label"],
-                "matches": c["matches"],
-                f"{a} wins": c["a_wins"],
-                "draws": c["draws"],
-                f"{b} wins": c["b_wins"],
-            }
-            for c in summary["by_category"]
-        ],
-        "penalty_shootouts (a shootout never changes the match result in the record above)": {
-            "total": summary["shootouts"]["total"],
-            f"{a} shootout wins": summary["shootouts"]["a_wins"],
-            f"{b} shootout wins": summary["shootouts"]["b_wins"],
+        "matches_played": overview["matches"],
+        "record": record_fact(overview),
+        "percentages": {f"{a} wins": overview["a_pct"], "draws": overview["draws_pct"], f"{b} wins": overview["b_pct"]},
+        "goals": {a: overview["a_goals"], b: overview["b_goals"], "average_per_match": overview["goals_per_game"]},
+        "first_meeting": match_fact(matches[0]),
+        "last_meeting": match_fact(matches[-1]),
+        f"biggest {a} win": match_fact(biggest(book["biggest_a_win"])),
+        f"biggest {b} win": match_fact(biggest(book["biggest_b_win"])),
+        "longest_streaks": {
+            f"{a} winning streak": streak_fact(book["a_winning_streak"]),
+            f"{b} winning streak": streak_fact(book["b_winning_streak"]),
+            f"{a} unbeaten streak": streak_fact(book["a_unbeaten_streak"]),
+            f"{b} unbeaten streak": streak_fact(book["b_unbeaten_streak"]),
         },
-        "matches_with_recorded_scorers": summary["matches_with_scorer_data"],
-        "top_scorers_in_those_matches": summary["top_scorers"],
+        "by_decade": [{"decade": d["label"], **record_fact(d)} for d in decades if d["matches"]],
+        "decades_with_no_matches": [d["label"] for d in decades if not d["matches"]],
+        "by_venue": [{"venue": v["label"], **record_fact(v)} for v in data.venue_records(a, b, matches)],
+        "penalty_shootouts": {
+            "total": shootouts["total"],
+            f"{a} shootout wins": shootouts["a_wins"],
+            f"{b} shootout wins": shootouts["b_wins"],
+        },
     }
 
 
 # ---------------------------------------------------------------------------
-# Main entry point
+# Writing a new story
 # ---------------------------------------------------------------------------
 
-def get_story(summary, lang, visitor):
-    """Return (story_text, was_cached). Raises ApiError with a readable message."""
-    if lang not in STORY_LANGUAGES:
-        raise ApiError("The story is only available in English (en) or Spanish (es).", 400)
+def start_story(team_a, team_b, matches, lang, visitor):
+    """Start writing a story that is not in the cache.
 
-    key = _cache_key(summary, lang)
-    with _lock:
-        if key in _cache:
-            return _cache[key], True
-
-        api_key = os.environ.get("OPENAI_API_KEY", "").strip()
-        if not api_key:
-            raise ApiError("The AI Story isn't set up yet: the server has no OpenAI key.", 503)
-
-        _check_rate_limit(visitor)
-
+    Makes the one call to OpenAI and returns (model name, pieces), where
+    `pieces` yields the text bit by bit as the model writes it. Problems that
+    happen before any text arrives (no key, rate limit, OpenAI refusing) are
+    raised as ApiError with a friendly message.
+    """
+    key = _cache_key(team_a, team_b, matches, lang)
+    api_key = os.environ.get("OPENAI_API_KEY", "").strip()
+    if not api_key:
+        raise ApiError("The AI Story isn't set up yet: the server has no OpenAI key.", 503)
     model = os.environ.get("OPENAI_MODEL", "").strip() or DEFAULT_OPENAI_MODEL
-    facts = json.dumps(build_facts(summary), ensure_ascii=False, indent=1)
+
+    with _lock:
+        if key in _in_progress:
+            raise ApiError("This story is already being written. Try again in a few seconds.", 409)
+        _check_rate_limit(visitor)
+        _in_progress.add(key)
+
+    # The story is always written with the teams in the same (alphabetical)
+    # order, because both ways of picking them share one cached story.
+    first, second = sorted([team_a, team_b])
+    facts = json.dumps(build_facts(first, second, data.head_to_head(first, second)), ensure_ascii=False)
+
+    print(f"OpenAI call: new {STORY_LANGUAGES[lang]} story for {first} v {second} ({model})", flush=True)
     try:
-        client = openai.OpenAI(api_key=api_key, timeout=25, max_retries=1)
-        response = client.chat.completions.create(
+        # max_retries=0: exactly one call, never an automatic second try.
+        client = openai.OpenAI(api_key=api_key, timeout=STORY_TIMEOUT_SECONDS, max_retries=0)
+        stream = client.chat.completions.create(
             model=model,
             messages=[
                 {"role": "system", "content": STORY_PROMPT.format(language=STORY_LANGUAGES[lang])},
-                {"role": "user", "content": f"Statistics:\n{facts}"},
+                {"role": "user", "content": f"FACTS:\n{facts}"},
             ],
+            max_completion_tokens=STORY_MAX_TOKENS,
+            stream=True,
         )
-        text = (response.choices[0].message.content or "").strip()
-    except openai.AuthenticationError:
-        raise ApiError("The AI Story couldn't start: the server's OpenAI key was rejected.", 502)
-    except openai.RateLimitError:
-        raise ApiError("The AI Story is out of OpenAI credit or too busy right now. Please try again later.", 503)
-    except openai.NotFoundError:
-        raise ApiError(f"The AI Story couldn't start: OpenAI doesn't know the model \"{model}\".", 502)
-    except (openai.APIConnectionError, openai.APITimeoutError):
-        raise ApiError("The AI writer took too long to answer. Please try again.", 504)
-    except openai.OpenAIError:
-        raise ApiError("The AI writer had a problem. Please try again.", 502)
+    except openai.OpenAIError as err:
+        with _lock:
+            _in_progress.discard(key)
+        raise _friendly_error(err, model)
 
-    if not text:
-        raise ApiError("The AI writer sent back an empty story. Please try again.", 502)
+    def pieces():
+        written = []
+        finished = False
+        try:
+            for chunk in stream:
+                text = chunk.choices[0].delta.content if chunk.choices else None
+                if text:
+                    written.append(text)
+                    yield text
+            finished = True
+        except openai.OpenAIError as err:
+            raise _friendly_error(err, model)
+        finally:
+            # Runs when the story ends AND when the visitor leaves halfway.
+            # Closing the stream tells OpenAI to stop writing.
+            stream.close()
+            with _lock:
+                _in_progress.discard(key)
+                if finished and written:  # only complete stories are saved
+                    _cache[key] = {"story": "".join(written).strip(), "model": model}
+                    CACHE_FILE.parent.mkdir(exist_ok=True)
+                    with open(CACHE_FILE, "w", encoding="utf-8") as f:
+                        json.dump(_cache, f, ensure_ascii=False, indent=1)
 
-    with _lock:
-        _cache[key] = text
-        _save_cache()
-    return text, False
+    return model, pieces()
+
+
+def _friendly_error(err, model):
+    """Turn an OpenAI error into a message that is safe and useful to show."""
+    if isinstance(err, openai.AuthenticationError):
+        return ApiError("The AI Story can't start: the server's OpenAI key was rejected.", 502)
+    if isinstance(err, openai.RateLimitError):
+        # OpenAI uses the same error for "out of credit" and "too busy".
+        if "insufficient_quota" in str(err):
+            return ApiError("The AI Story has run out of OpenAI credit, so no new stories can be written right now.", 503)
+        return ApiError("The AI writer is too busy right now. Please try again in a minute.", 503)
+    if isinstance(err, openai.NotFoundError):
+        return ApiError(f"The AI Story can't start: OpenAI doesn't have a model called \"{model}\".", 502)
+    if isinstance(err, (openai.APITimeoutError, openai.APIConnectionError)):
+        return ApiError("The AI writer didn't answer in time. Please try again.", 504)
+    return ApiError("The AI writer had a problem. Please try again.", 502)
