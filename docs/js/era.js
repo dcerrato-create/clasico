@@ -138,6 +138,12 @@ function createEraChart(panel, data, teamColors, onPickDecade) {
       if (record.draws > 0) track.append(makeEl("span", "era-draw-num", String(record.draws)));
       row.append(track);
 
+      // A small pop-up over the row, so it is obvious the decade can be clicked.
+      // CSS shows it while the mouse is over the row, or after a tap (".era-tip").
+      const tip = makeEl("span", "era-tip", `Click to see the ${record.label} on the Match Timeline`);
+      tip.setAttribute("aria-hidden", "true");
+      row.append(tip);
+
       // Mouse: hovering shows the record and a click opens the timeline.
       // Touch: the first tap shows the record, the second opens the timeline.
       row.addEventListener("pointerdown", (event) => (lastPointer = event.pointerType));
@@ -146,6 +152,9 @@ function createEraChart(panel, data, teamColors, onPickDecade) {
       });
       row.addEventListener("click", () => {
         if (lastPointer === "touch" && selectedDecade !== record.decade) {
+          // On a phone there is no hover, so the first tap shows the pop-up.
+          tip.textContent = `Tap again to see the ${record.label} on the Match Timeline`;
+          for (const other of rows.children) other.classList.toggle("tapped", other === row);
           selectDecade(record, row);
         } else {
           onPickDecade(record.decade);

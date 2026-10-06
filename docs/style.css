@@ -1252,7 +1252,42 @@ button:disabled { cursor: not-allowed; opacity: 0.6; }
   border-radius: 4px;
   color: var(--text);
   text-align: left;
+  position: relative; /* the pop-up is placed relative to its row */
 }
+
+/* The pop-up that says the decade can be clicked. It floats just above the
+   row and only shows while the mouse is over it (or, on a phone, after a tap). */
+.era-tip {
+  position: absolute;
+  left: 50%;
+  bottom: calc(100% - 2px);
+  z-index: 5;
+  transform: translateX(-50%) translateY(4px);
+  padding: 5px 12px;
+  background: var(--text);
+  color: #000;
+  border-radius: 4px;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.6);
+  font-size: 0.78rem;
+  font-weight: 700;
+  white-space: nowrap;
+  pointer-events: none; /* never blocks the click on the row */
+  opacity: 0;
+  transition: opacity 0.15s ease, transform 0.15s ease;
+}
+/* the little arrow pointing down at the row */
+.era-tip::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 100%;
+  margin-left: -6px;
+  border: 6px solid transparent;
+  border-top-color: var(--text);
+}
+.era-row:hover .era-tip,
+.era-row.tapped .era-tip { opacity: 1; transform: translateX(-50%); }
+
 .era-row:hover:not(:disabled),
 .era-row.selected { background: rgba(255, 255, 255, 0.08); border-color: var(--border); }
 .era-row.selected { border-color: var(--text); }
