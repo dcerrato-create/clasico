@@ -18,7 +18,9 @@ from werkzeug.exceptions import HTTPException
 load_dotenv(Path(__file__).parent.parent / ".env")
 
 import data  # noqa: E402  (imported after load_dotenv on purpose)
+import photos  # noqa: E402
 import story  # noqa: E402
+from config import MAX_SCORERS  # noqa: E402
 from errors import ApiError  # noqa: E402
 
 app = Flask(__name__)
@@ -107,13 +109,13 @@ def rivalry():
     })
 
 
-@app.get("/api/eras")
-def eras():
-    """The record decade by decade, for the Era Chart.
+def get_filtered_matches():
+    """Shared by the Era Chart and Top Scorers endpoints: read team_a, team_b
+    and tournament from the address and return the matches to count.
 
-    Example: /api/eras?team_a=Honduras&team_b=El Salvador&tournament=Gold Cup
     "tournament" is the id of one of this rivalry's filter chips. Leave it
     out (or send "all") to count every match.
+    Returns (team_a, team_b, all matches, counted matches, tournament info).
     """
     team_a, team_b = get_team_pair(request.args.get("team_a"), request.args.get("team_b"))
     matches = data.head_to_head(team_a, team_b)
@@ -128,13 +130,106 @@ def eras():
         raise ApiError(f"{team_a} and {team_b} have no matches filed under \"{tournament}\".", 400)
 
     counted = matches if tournament == "all" else [m for m in matches if m["category"] == tournament]
+    return team_a, team_b, matches, counted, {"id": tournament, "label": labels[tournament]}
+
+
+@app.get("/api/eras")
+def eras():
+    """The record decade by decade, for the Era Chart.
+
+    Example: /api/eras?team_a=Honduras&team_b=El Salvador&tournament=Gold Cup
+    """
+    team_a, team_b, matches, counted, tournament = get_filtered_matches()
     return jsonify({
         "team_a": data.team_info(team_a),
         "team_b": data.team_info(team_b),
-        "tournament": {"id": tournament, "label": labels[tournament]},
+        "tournament": tournament,
         "matches": len(counted),
         "decades": data.decade_records(counted, matches),
     })
+
+
+def get_scorer_limit():
+    """Read "limit" (how many players) from the address, with a readable error."""
+    try:
+        limit = int(request.args.get("limit", 10))
+    except ValueError:
+        raise ApiError("\"limit\" must be a number, like 10.", 400)
+    if not 1 <= limit <= MAX_SCORERS:
+        raise ApiError(f"\"limit\" must be between 1 and {MAX_SCORERS}.", 400)
+    return limit
+
+
+@app.get("/api/scorers")
+def scorers():
+    """The top scorers of a rivalry, for the Top Scorers tab.
+
+    Example: /api/scorers?team_a=Honduras&team_b=El Salvador&limit=10
+    Also returns the numbers for the "scorer data missing" note. Photos are
+    NOT included: the page asks for them separately (/api/photos), so a slow
+    Wikipedia never delays this list.
+    """
+    team_a, team_b, matches, counted, tournament = get_filtered_matches()
+    players, tied_not_shown = data.top_scorers(counted, get_scorer_limit())
+    with_goals = [m for m in counted if m["home_score"] + m["away_score"] > 0]
+    return jsonify({
+        "team_a": data.team_info(team_a),
+        "team_b": data.team_info(team_b),
+        "tournament": tournament,
+        "scorers": players,
+        "tied_not_shown": tied_not_shown,
+        "total_matches": len(counted),
+        "matches_with_goals": len(with_goals),
+        # Matches where goals were scored but the dataset doesn't say by whom.
+        "matches_missing_scorers": sum(1 for m in with_goals if not m["scorers"]),
+    })
+
+
+def player_for_photo(name, team):
+    """What photos.py needs to know about a player. The years are from ALL
+    their international goals, to check a Wikipedia page is the right person."""
+    first_year, last_year = data.SCORER_YEARS[(name, team)]
+    return {"name": name, "team": team, "first_year": first_year, "last_year": last_year}
+
+
+@app.get("/api/photos")
+def photos_for_scorers():
+    """Photos for the same players /api/scorers returns, in one quick step.
+
+    Example: /api/photos?team_a=Honduras&team_b=El Salvador&limit=10
+    Each player gets a "status": "found", "none" (no photo exists),
+    "search" (ask /api/photo to search harder) or "unavailable" (Wikipedia
+    couldn't be reached). This never fails because of Wikipedia.
+    """
+    team_a, team_b, matches, counted, tournament = get_filtered_matches()
+    players, _ = data.top_scorers(counted, get_scorer_limit())
+    return jsonify({
+        "photos": photos.quick_lookup([player_for_photo(p["name"], p["team"]) for p in players]),
+    })
+
+
+@app.get("/api/photo")
+def photo():
+    """Search Wikipedia for ONE player's photo (the slower, careful way).
+
+    Example: /api/photo?name=Adriano&team=Brazil
+    If Wikipedia is slow or down this still answers normally, with
+    "photo": null, so the page can show its placeholder.
+    """
+    name = (request.args.get("name") or "").strip()
+    team_text = (request.args.get("team") or "").strip()
+    if not name or not team_text:
+        raise ApiError("Please send both a player \"name\" and a \"team\".", 400)
+    team = data.resolve_team(team_text)
+    if team is None:
+        raise ApiError(f"We couldn't find a team called \"{team_text}\".", 404)
+    # Only look up players who are really in our data, so this address
+    # can't be used to search Wikipedia for anything else.
+    if (name, team) not in data.SCORER_YEARS:
+        raise ApiError(f"We have no goals recorded for \"{name}\" playing for {team}.", 404)
+
+    result = photos.search_lookup(player_for_photo(name, team))
+    return jsonify({"name": name, "team": team, **result})
 
 
 @app.post("/api/story")

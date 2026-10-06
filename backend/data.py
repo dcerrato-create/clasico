@@ -73,6 +73,18 @@ for row in _read_csv("goalscorers.csv"):
         "penalty": row["penalty"] == "TRUE",
     })
 
+# The first and last year each player scored for a team, across every match.
+# The photo lookup uses it to check a Wikipedia page is about the right person.
+SCORER_YEARS = {}
+for (_date, _home, _away), _goals in GOALS.items():
+    for _goal in _goals:
+        if _goal["own_goal"] or _goal["scorer"] in ("", "NA"):
+            continue
+        _key = (_goal["scorer"], _goal["team"])
+        _year = int(_date[:4])
+        _first, _last = SCORER_YEARS.get(_key, (_year, _year))
+        SCORER_YEARS[_key] = (min(_first, _year), max(_last, _year))
+
 SHOOTOUTS = {
     (row["date"], row["home_team"], row["away_team"]): row["winner"]
     for row in _read_csv("shootouts.csv")
@@ -231,6 +243,42 @@ def decade_records(matches, all_matches):
         record["matches"] += 1
         record[{"a": "a_wins", "draw": "draws", "b": "b_wins"}[m["winner"]]] += 1
     return list(records.values())
+
+
+def top_scorers(matches, limit):
+    """The players with the most goals in these matches.
+
+    Own goals are not counted. Players with the same number of goals share a
+    rank (1, 2, 2, 4...). Returns (the top `limit` players, how many more
+    players are tied with the last one shown).
+    """
+    players = {}
+    for m in matches:
+        year = int(m["date"][:4])
+        for goal in m["scorers"]:
+            if goal["own_goal"] or goal["scorer"] in ("", "NA"):
+                continue
+            player = players.setdefault((goal["scorer"], goal["team"]), {
+                "name": goal["scorer"], "team": goal["team"],
+                "goals": 0, "penalties": 0, "first_year": year, "last_year": year,
+                "match_dates": set(),
+            })
+            player["goals"] += 1
+            player["penalties"] += goal["penalty"]  # True counts as 1
+            player["first_year"] = min(player["first_year"], year)
+            player["last_year"] = max(player["last_year"], year)
+            player["match_dates"].add(m["date"])
+
+    # Most goals first; ties go to whoever scored in this rivalry first.
+    ordered = sorted(players.values(), key=lambda p: (-p["goals"], p["first_year"], p["name"]))
+    for index, player in enumerate(ordered):
+        tied_with_previous = index > 0 and player["goals"] == ordered[index - 1]["goals"]
+        player["rank"] = ordered[index - 1]["rank"] if tied_with_previous else index + 1
+        player["matches"] = len(player.pop("match_dates"))
+
+    shown = ordered[:limit]
+    tied_not_shown = sum(1 for p in ordered[limit:] if shown and p["goals"] == shown[-1]["goals"])
+    return shown, tied_not_shown
 
 
 def _short(match):

@@ -66,4 +66,21 @@ const ERA_CHART = {
   stagger: 120,          // delay between one decade and the next
 };
 
+// The Top Scorers tab ("Rivalry Legends").
+const SCORERS = {
+  playersShown: 10,  // how many players in total (the first 3 go on the podium)
+
+  // Podium card colors, by rank.
+  gold: "#f2c14e",
+  silver: "#c7d0dc",
+  bronze: "#cd8a4b",
+
+  stagger: 130,      // milliseconds between one card appearing and the next
+
+  // The note that is always shown at the top of the tab.
+  disclaimer: "Goalscorer data comes from a public dataset and is incomplete for some older matches. Totals may be lower than official records.",
+  // The credit shown under the players.
+  photoCredit: "Photos: Wikipedia / Wikimedia Commons. Some players may not have a photo available.",
+};
+
 /* ========================== end of CONFIG ================================ */

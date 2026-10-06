@@ -1,7 +1,8 @@
 // timeline.js - the Explore card: tabs, tournament filter chips and the
 // Match Timeline chart (drawn with Chart.js, loaded from a CDN in index.html).
-// The Era Chart tab lives in era.js; this file switches between the two and
-// keeps the filters (tournament chip + decade) that both tabs share.
+// The Era Chart tab lives in era.js and the Top Scorers tab in scorers.js;
+// this file switches between the three and keeps what they share: the
+// tournament chip, the decade filter and the highlighted player.
 
 let timelineChart = null; // the current Chart.js chart, so we can remove it later
 
@@ -94,7 +95,9 @@ function showMatchDetail(panel, match, colors, ringColor) {
 
 // Turns the matches into the three groups of dots Chart.js draws.
 // ringColorOf(match) gives the shootout winner's color, or null.
-function buildDatasets(matches, data, colors, ringColorOf) {
+// isFaded(match) is true for matches to push into the background (used when
+// one player's matches are highlighted).
+function buildDatasets(matches, data, colors, ringColorOf, isFaded) {
   const smallScreen = window.innerWidth < 600;
   const baseRadius = smallScreen ? 4 : 6;
   const growth = smallScreen ? 1.5 : 2; // extra radius per goal of margin
@@ -115,6 +118,7 @@ function buildDatasets(matches, data, colors, ringColorOf) {
       y: rows[match.winner] + nudges[group.points.length % nudges.length],
       r: baseRadius + Math.min(match.margin, 6) * growth, // bigger margin, bigger dot
       ring: ringColorOf(match), // only set for matches that went to penalties
+      faded: isFaded(match),
       match,
     });
   }
@@ -122,10 +126,11 @@ function buildDatasets(matches, data, colors, ringColorOf) {
   return ["a", "draw", "b"].map((key) => ({
     label: groups[key].label,
     data: groups[key].points,
-    backgroundColor: colors[key] + "d9", // slightly see-through
+    // Normal dots are slightly see-through; faded ones are almost invisible.
+    backgroundColor: groups[key].points.map((point) => colors[key] + (point.faded ? "24" : "d9")),
     // Normally a thin dark ring separates overlapping dots. A match that went
     // to penalties gets a thick ring in the shootout winner's color instead.
-    borderColor: groups[key].points.map((point) => point.ring || COLORS.surface),
+    borderColor: groups[key].points.map((point) => (point.faded ? "transparent" : point.ring || COLORS.surface)),
     borderWidth: groups[key].points.map((point) => (point.ring ? 3 : 1.5)),
     hoverBorderColor: COLORS.text,
     hoverBorderWidth: 2,
@@ -140,31 +145,32 @@ function renderExplore(container, data, teamColors) {
   const allMatches = data.matches;
   let activeFilter = "all";    // which tournament chip is on
   let activeDecade = null;     // e.g. 2000 when the Era Chart sent us here
-  let activeTab = "timeline";  // "timeline" or "era"
+  let activePlayer = null;     // a scorer whose matches are highlighted
+  let activeTab = "timeline";  // "timeline", "era" or "scorers"
 
   const card = makeEl("section", "card explore");
   card.setAttribute("aria-label", "Explore the matches");
 
-  // --- Tabs (Top Scorers arrives in Phase 2, part 2) ---
+  // --- Tabs ---
   const tabs = makeEl("div", "tabs");
   const tabButtons = {
     timeline: makeEl("button", "tab", "Match Timeline"),
     era: makeEl("button", "tab", "Era Chart"),
+    scorers: makeEl("button", "tab", "Top Scorers"),
   };
   for (const [name, button] of Object.entries(tabButtons)) {
     button.type = "button";
     button.addEventListener("click", () => showTab(name));
     tabs.append(button);
   }
-  const scorersTab = makeEl("button", "tab", "Top Scorers");
-  scorersTab.type = "button";
-  scorersTab.disabled = true;
-  scorersTab.append(makeEl("span", "soon", "soon"));
-  tabs.append(scorersTab);
 
   // Each tab has its own panel; only one is visible at a time.
-  const timelinePanel = makeEl("div", "tab-panel");
-  const eraPanel = makeEl("div", "tab-panel");
+  const panels = {
+    timeline: makeEl("div", "tab-panel"),
+    era: makeEl("div", "tab-panel"),
+    scorers: makeEl("div", "tab-panel"),
+  };
+  const timelinePanel = panels.timeline;
 
   // --- Filter chips: "All" plus one per tournament ---
   const chips = makeEl("div", "chips");
@@ -198,6 +204,21 @@ function renderExplore(container, data, teamColors) {
     update();
   });
   decadeFilter.append(decadeText, decadeReset);
+
+  // Shown only while one player's matches are highlighted.
+  const playerFilter = makeEl("div", "decade-filter");
+  const playerText = makeEl("span", "decade-text");
+  const playerReset = makeEl("button", "secondary", "✕ Show all matches");
+  playerReset.type = "button";
+  playerReset.addEventListener("click", () => {
+    activePlayer = null;
+    update();
+  });
+  playerFilter.append(playerText, playerReset);
+
+  // Did the highlighted player score in this match? (Own goals don't count.)
+  const playerScoredIn = (match) => match.scorers.some((goal) =>
+    goal.scorer === activePlayer.name && goal.team === activePlayer.team && !goal.own_goal);
 
   const filterSummary = makeEl("p", "filter-summary");
 
@@ -240,22 +261,30 @@ function renderExplore(container, data, teamColors) {
   tableScroll.append(table);
   tableBox.append(tableScroll);
 
-  timelinePanel.append(decadeFilter, filterSummary, legend, chartWrap, detail, tableBox);
-  card.append(tabs, chips, timelinePanel, eraPanel);
+  timelinePanel.append(decadeFilter, playerFilter, filterSummary, legend, chartWrap, detail, tableBox);
+  card.append(tabs, chips, panels.timeline, panels.era, panels.scorers);
   container.append(card);
 
   // The Era Chart. Clicking one of its decades brings us back to the
   // timeline, showing only that decade.
-  const eraChart = createEraChart(eraPanel, data, colors, (decade) => {
+  const eraChart = createEraChart(panels.era, data, colors, (decade) => {
     activeDecade = decade;
+    showTab("timeline");
+    card.scrollIntoView({ behavior: "smooth", block: "start" });
+  });
+
+  // Top Scorers. Clicking a player brings us back to the timeline with the
+  // matches that player scored in highlighted.
+  const scorersTab = createScorersTab(panels.scorers, data, (player) => {
+    activePlayer = player;
+    activeDecade = null; // show every year, so none of their matches is hidden
     showTab("timeline");
     card.scrollIntoView({ behavior: "smooth", block: "start" });
   });
 
   function showTab(name) {
     activeTab = name;
-    timelinePanel.hidden = name !== "timeline";
-    eraPanel.hidden = name !== "era";
+    for (const [tabName, panel] of Object.entries(panels)) panel.hidden = tabName !== name;
     for (const [tabName, button] of Object.entries(tabButtons)) {
       button.classList.toggle("active", tabName === name);
     }
@@ -344,9 +373,13 @@ function renderExplore(container, data, teamColors) {
     }
     const filterLabel = chipList.find((c) => c.id === activeFilter).label;
 
-    // The Era Chart draws itself; it only needs to know the tournament.
+    // The other two tabs draw themselves; they only need the tournament.
     if (activeTab === "era") {
       eraChart.show(activeFilter, filterLabel);
+      return;
+    }
+    if (activeTab === "scorers") {
+      scorersTab.show(activeFilter, filterLabel);
       return;
     }
 
@@ -360,6 +393,16 @@ function renderExplore(container, data, teamColors) {
 
     decadeFilter.hidden = activeDecade === null;
     decadeText.textContent = `Showing only the ${activeDecade}s`;
+
+    // Highlighting a player keeps every dot on the chart but fades the
+    // matches they didn't score in.
+    const highlighted = activePlayer ? matches.filter(playerScoredIn) : matches;
+    playerFilter.hidden = activePlayer === null;
+    if (activePlayer) {
+      playerText.textContent = highlighted.length === 1
+        ? `Highlighting the 1 match ${activePlayer.name} scored in`
+        : `Highlighting the ${highlighted.length} matches ${activePlayer.name} scored in`;
+    }
 
     const aWins = matches.filter((m) => m.winner === "a").length;
     const bWins = matches.filter((m) => m.winner === "b").length;
@@ -377,7 +420,8 @@ function renderExplore(container, data, teamColors) {
       const xAxis = timelineChart.options.scales.x;
       xAxis.min = activeDecade === null ? firstYear - 1 : activeDecade - 1;
       xAxis.max = activeDecade === null ? lastYear + 2 : activeDecade + 10;
-      timelineChart.data.datasets = buildDatasets(matches, data, colors, ringColorOf);
+      const isFaded = (match) => activePlayer !== null && !playerScoredIn(match);
+      timelineChart.data.datasets = buildDatasets(matches, data, colors, ringColorOf, isFaded);
       timelineChart.update();
       canvas.setAttribute("aria-label",
         `Timeline of ${matches.length} matches between ${data.team_a.name} and ${data.team_b.name}, ` +
@@ -391,7 +435,8 @@ function renderExplore(container, data, teamColors) {
     const headRow = makeEl("tr");
     for (const heading of ["Date", "Match", "Tournament", "City"]) headRow.append(makeEl("th", "", heading));
     table.append(headRow);
-    for (const match of [...matches].reverse()) {
+    // (when a player is highlighted, the table lists only their matches)
+    for (const match of [...highlighted].reverse()) {
       const row = makeEl("tr");
       const scoreCell = makeEl("td");
       scoreCell.append(makeMatchDot(match, colors, ringColorOf(match)), scoreLine(match));
