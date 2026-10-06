@@ -1384,147 +1384,72 @@ button:disabled { cursor: not-allowed; opacity: 0.6; }
   .owner-a .left .era-num, .owner-b .right .era-num { font-size: 1.4rem; }
 }
 
-/* ---------- 7. Top Scorers ("Rivalry Legends") ---------- */
+/* ---------- 7. More Statistics (Record Book + Home and Away) ---------- */
 
-/* the note that is always visible at the top of the tab */
-.scorers-disclaimer {
-  margin: 0 0 6px;
-  padding: 8px 12px;
-  background: rgba(0, 0, 0, 0.45);
-  border-left: 3px solid var(--muted);
-  border-radius: 0 4px 4px 0;
-  color: var(--muted);
-  font-size: 0.82rem;
-}
-.scorers-missing { margin: 0 0 14px; padding-left: 15px; font-size: 0.85rem; font-weight: 700; }
-.scorers-credit { margin: 14px 0 0; color: var(--muted); font-size: 0.78rem; }
-.scorers-more { margin: 10px 0 0; color: var(--muted); font-size: 0.85rem; text-align: center; }
-
-.scorers-empty {
-  padding: 28px 16px;
-  background: rgba(0, 0, 0, 0.45);
-  border: 1px dashed var(--border);
-  border-radius: 6px;
-  text-align: center;
-  color: var(--muted);
-}
-.scorers-empty p { margin: 0; }
-.scorers-empty-title { font-family: var(--font-display); font-size: 1.5rem; letter-spacing: 0.05em; color: var(--text); }
-
-/* A player: podium cards and list rows share these rules. Each is a button. */
-.player {
-  position: relative;
-  display: grid;
-  align-items: center;
-  width: 100%;
-  background: rgba(0, 0, 0, 0.55);
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  color: var(--text);
-  text-align: left;
-  /* cards rise in one after another; scorers.js sets each card's delay */
-  animation: player-in 0.5s cubic-bezier(0.2, 1.2, 0.4, 1) both;
-  transition: transform 0.15s ease, border-color 0.15s ease;
-}
-.player:hover { transform: translateY(-3px); border-color: var(--text); }
-@keyframes player-in {
-  from { opacity: 0; transform: translateY(26px) scale(0.94); }
-  to   { opacity: 1; transform: none; }
-}
-
-.player-info { display: grid; gap: 2px; min-width: 0; }
-.player-name {
+.stat-section {
   display: flex;
   align-items: center;
-  gap: 8px;
-  font-weight: 700;
-  line-height: 1.2;
-  overflow-wrap: anywhere;
-}
-.player-name .flag { width: 22px; }
-.player-goals { color: var(--muted); font-size: 0.85rem; }
-.player-goals strong { font-family: var(--font-impact); font-weight: 400; color: var(--text); }
-.player-facts { color: var(--muted); font-size: 0.8rem; }
-
-/* the photo, or the "Photo not available" box that stands in for it */
-.player-photo-slot { display: block; }
-.player-photo {
-  display: block;
-  width: 100%;
-  aspect-ratio: 1;
-  object-fit: cover;
-  object-position: 50% 20%; /* faces are usually near the top of a portrait */
-  border-radius: 6px;
-  background: #0d1730;
-}
-.player-photo.placeholder {
-  display: grid;
-  place-content: center;
-  justify-items: center;
-  gap: 4px;
-  border: 1px dashed var(--border);
-  color: var(--muted);
-  text-align: center;
-}
-.placeholder-icon { font-size: 1.8rem; line-height: 1; filter: grayscale(1); opacity: 0.6; }
-.placeholder-text { font-size: 0.62rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; padding: 0 4px; }
-.placeholder.loading .placeholder-text { visibility: hidden; } /* still looking for the photo */
-
-/* --- The podium: top 3. On a phone the cards stack, photo on the left. --- */
-.podium { display: grid; gap: 10px; }
-.podium-card {
-  grid-template-columns: 96px 1fr;
-  gap: 14px;
-  padding: 12px;
-  border-top: 4px solid var(--medal);
-  box-shadow: 0 0 26px color-mix(in srgb, var(--medal) 28%, transparent);
-}
-.podium-card .player-name { font-size: 1.1rem; }
-.podium-card .player-goals { font-size: 0.95rem; }
-.podium-card .player-goals strong { font-size: 2.4rem; line-height: 1; margin-right: 2px; }
-/* the medal with the rank number */
-.podium-card .player-rank {
-  position: absolute;
-  top: -14px;
-  left: -8px;
-  z-index: 1;
-  display: grid;
-  place-items: center;
-  width: 34px;
-  height: 34px;
-  background: var(--medal);
-  color: #000;
-  border-radius: 50%;
-  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.6);
-  font-family: var(--font-impact);
-  font-size: 1.1rem;
-}
-
-/* --- Places 4 and below: compact rows --- */
-.scorers-list { display: grid; gap: 6px; margin-top: 12px; }
-.list-row {
-  grid-template-columns: 26px 48px 1fr;
   gap: 10px;
-  padding: 6px 10px;
+  margin: 22px 0 10px;
+  font-family: var(--font-display);
+  font-size: 1.5rem;
+  font-weight: 400;
+  letter-spacing: 0.06em;
+  line-height: 1;
 }
-.list-row .player-rank { font-family: var(--font-impact); font-size: 1.1rem; color: var(--muted); text-align: center; }
-.list-row .placeholder-text { display: none; } /* too small for words: icon only */
-.list-row .placeholder-icon { font-size: 1.3rem; }
-.list-row .player-info { grid-template-columns: 1fr auto; align-items: center; column-gap: 10px; }
-.list-row .player-goals { grid-column: 2; grid-row: 1 / span 2; text-align: right; white-space: nowrap; }
-.list-row .player-goals strong { font-size: 1.5rem; }
-.list-row .player-facts { grid-column: 1; }
+.stat-section::before {
+  content: "";
+  width: 8px;
+  height: 1.2rem;
+  background: var(--accent);
+  transform: skewX(-14deg);
+}
+.stat-section-note { margin: -4px 0 10px; color: var(--muted); font-size: 0.85rem; }
+
+.stat-grid { display: grid; gap: 10px; }
+
+/* One record. The stripe on the left is the color of the team it belongs to. */
+.stat-card {
+  padding: 12px 14px;
+  background: rgba(0, 0, 0, 0.55);
+  border: 1px solid var(--border);
+  border-left: 5px solid var(--draw);
+  border-radius: 6px;
+  /* cards rise in one after another; stats.js sets each card's delay */
+  animation: stat-in 0.45s cubic-bezier(0.2, 1.2, 0.4, 1) both;
+}
+@keyframes stat-in {
+  from { opacity: 0; transform: translateY(20px) scale(0.96); }
+  to   { opacity: 1; transform: none; }
+}
+.stat-card p { margin: 0; }
+.stat-heading {
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+.stat-value {
+  margin-top: 4px !important;
+  font-family: var(--font-display);
+  font-size: 1.55rem;
+  letter-spacing: 0.04em;
+  line-height: 1.15;
+}
+.stat-number { font-family: var(--font-impact); font-weight: 400; font-size: 2.2rem; line-height: 1; }
+.stat-extra { color: var(--muted); }
+.stat-note { color: var(--muted); font-size: 0.85rem; margin-top: 2px !important; }
+.stat-none { margin-top: 6px !important; color: var(--muted); font-style: italic; }
+
+/* Home and Away cards reuse the headline's three-part bar */
+.venue-bar { margin: 10px 0; height: 12px; }
+.venues .era-record { font-size: 1.3rem; }
 
 @media (min-width: 700px) {
-  /* side by side, like a real podium, with the photo on top */
-  .podium { grid-template-columns: repeat(3, 1fr); gap: 16px; margin-top: 14px; }
-  .podium-card { grid-template-columns: 1fr; align-content: start; gap: 12px; padding: 14px; }
-  .podium-card .player-info { justify-items: center; text-align: center; }
-  .podium-card .player-name { justify-content: center; font-size: 1.2rem; }
-  .podium-card .player-goals strong { font-size: 3rem; }
-  .podium-card .placeholder-icon { font-size: 3rem; }
-  .podium-card .placeholder-text { font-size: 0.75rem; }
-  .list-row { grid-template-columns: 30px 56px 1fr; padding: 8px 14px; }
+  .stat-grid { grid-template-columns: 1fr 1fr; gap: 12px; }
+  .stat-card.wide { grid-column: 1 / -1; }
+  .stat-grid.venues { grid-template-columns: repeat(3, 1fr); }
 }
 
 .match-table { margin-top: 14px; }
@@ -1559,5 +1484,5 @@ button:disabled { cursor: not-allowed; opacity: 0.6; }
   .step, .side-name, .stage-vs, .primary, .featured-card { transition: none; }
   .stage.quick, .stage.quick .side, .stage.quick .stage-vs, .stage.quick .clasico-name { animation: none; }
   .era-bar, .era-num, .era-draw-num { transition: none; }
-  .player { animation: none; transition: none; }
+  .stat-card { animation: none; }
 }

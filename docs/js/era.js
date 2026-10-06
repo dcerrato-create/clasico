@@ -11,6 +11,26 @@ function eraRecordText(record, teamA, teamB) {
   return `${record.label}: ${teamA} ${record.a_wins} – Draws ${record.draws} – ${teamB} ${record.b_wins}`;
 }
 
+// The same record as a line of text with each part in its own color:
+// Team A's color, gray for draws, Team B's color. `label` goes in front
+// ("2000s", "Neutral ground"...). Also used by the More Statistics tab.
+function buildRecordLine(label, record, teamA, teamB, colors) {
+  const line = makeEl("p", "era-record");
+  if (label) line.append(`${label}: `);
+  const parts = [
+    [colors.a, `${teamA} ${record.a_wins}`],
+    [colors.draw, `Draws ${record.draws}`],
+    [colors.b, `${teamB} ${record.b_wins}`],
+  ];
+  parts.forEach(([color, text], index) => {
+    if (index > 0) line.append(makeEl("span", "era-record-dash", " – "));
+    const part = makeEl("span", "era-record-part", text);
+    part.style.color = makeVisible(color, 0.22); // bright enough to read as text
+    line.append(part);
+  });
+  return line;
+}
+
 // Builds the tab inside `panel`. onPickDecade(decade) is called when a decade
 // is clicked. Returns { show } - call show() whenever the tab opens or the
 // tournament filter changes.
@@ -60,20 +80,7 @@ function createEraChart(panel, data, teamColors, onPickDecade) {
     const button = makeEl("button", "secondary", `See the ${record.label} on the Match Timeline →`);
     button.type = "button";
     button.addEventListener("click", () => onPickDecade(record.decade));
-    // The record, with each part in its own color: Team A, draws (gray), Team B.
-    const line = makeEl("p", "era-record");
-    line.append(`${record.label}: `);
-    const parts = [
-      [colors.a, `${teamA} ${record.a_wins}`],
-      [colors.draw, `Draws ${record.draws}`],
-      [colors.b, `${teamB} ${record.b_wins}`],
-    ];
-    parts.forEach(([color, text], index) => {
-      if (index > 0) line.append(makeEl("span", "era-record-dash", " – "));
-      const part = makeEl("span", "era-record-part", text);
-      part.style.color = makeVisible(color, 0.22); // bright enough to read as text
-      line.append(part);
-    });
+    const line = buildRecordLine(record.label, record, teamA, teamB, colors);
     detail.replaceChildren(line, button);
   }
 

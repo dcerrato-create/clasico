@@ -73,18 +73,6 @@ for row in _read_csv("goalscorers.csv"):
         "penalty": row["penalty"] == "TRUE",
     })
 
-# The first and last year each player scored for a team, across every match.
-# The photo lookup uses it to check a Wikipedia page is about the right person.
-SCORER_YEARS = {}
-for (_date, _home, _away), _goals in GOALS.items():
-    for _goal in _goals:
-        if _goal["own_goal"] or _goal["scorer"] in ("", "NA"):
-            continue
-        _key = (_goal["scorer"], _goal["team"])
-        _year = int(_date[:4])
-        _first, _last = SCORER_YEARS.get(_key, (_year, _year))
-        SCORER_YEARS[_key] = (min(_first, _year), max(_last, _year))
-
 SHOOTOUTS = {
     (row["date"], row["home_team"], row["away_team"]): row["winner"]
     for row in _read_csv("shootouts.csv")
@@ -245,40 +233,77 @@ def decade_records(matches, all_matches):
     return list(records.values())
 
 
-def top_scorers(matches, limit):
-    """The players with the most goals in these matches.
+def _short_match(match):
+    """A match as the record book shows it."""
+    return {
+        "date": match["date"],
+        "score": f'{match["home_team"]} {match["home_score"]}-{match["away_score"]} {match["away_team"]}',
+        "tournament": match["tournament"],
+        "city": match["city"],
+        "country": match["country"],
+        "goals": match["home_score"] + match["away_score"],
+        "margin": match["margin"],
+    }
 
-    Own goals are not counted. Players with the same number of goals share a
-    rank (1, 2, 2, 4...). Returns (the top `limit` players, how many more
-    players are tied with the last one shown).
-    """
-    players = {}
-    for m in matches:
-        year = int(m["date"][:4])
-        for goal in m["scorers"]:
-            if goal["own_goal"] or goal["scorer"] in ("", "NA"):
-                continue
-            player = players.setdefault((goal["scorer"], goal["team"]), {
-                "name": goal["scorer"], "team": goal["team"],
-                "goals": 0, "penalties": 0, "first_year": year, "last_year": year,
-                "match_dates": set(),
-            })
-            player["goals"] += 1
-            player["penalties"] += goal["penalty"]  # True counts as 1
-            player["first_year"] = min(player["first_year"], year)
-            player["last_year"] = max(player["last_year"], year)
-            player["match_dates"].add(m["date"])
 
-    # Most goals first; ties go to whoever scored in this rivalry first.
-    ordered = sorted(players.values(), key=lambda p: (-p["goals"], p["first_year"], p["name"]))
-    for index, player in enumerate(ordered):
-        tied_with_previous = index > 0 and player["goals"] == ordered[index - 1]["goals"]
-        player["rank"] = ordered[index - 1]["rank"] if tied_with_previous else index + 1
-        player["matches"] = len(player.pop("match_dates"))
+def _longest_run(matches, counts):
+    """The longest run of matches in a row for which counts(match) is true.
+    If two runs are equally long, the more recent one is returned.
+    Returns {"length", "start", "end"} (dates), or None if it never happened."""
+    best = None
+    run = []
+    for m in matches:  # oldest first
+        if counts(m):
+            run.append(m)
+            if best is None or len(run) >= best["length"]:
+                best = {"length": len(run), "start": run[0]["date"], "end": run[-1]["date"]}
+        else:
+            run = []
+    return best
 
-    shown = ordered[:limit]
-    tied_not_shown = sum(1 for p in ordered[limit:] if shown and p["goals"] == shown[-1]["goals"])
-    return shown, tied_not_shown
+
+def record_book(team_a, team_b, matches):
+    """The records of a rivalry: biggest wins, highest score, longest streaks."""
+    # "Biggest" = widest margin; if equal, more goals; if still equal, the latest.
+    def biggest(wins):
+        best = max(wins, key=lambda m: (m["margin"], m["a_goals"] + m["b_goals"], m["date"]), default=None)
+        return _short_match(best) if best else None
+
+    highest = max(matches, key=lambda m: (m["a_goals"] + m["b_goals"], m["date"]), default=None)
+    return {
+        "biggest_a_win": biggest([m for m in matches if m["winner"] == "a"]),
+        "biggest_b_win": biggest([m for m in matches if m["winner"] == "b"]),
+        "highest_scoring": _short_match(highest) if highest else None,
+        # A winning streak is wins in a row; an unbeaten streak also allows draws.
+        "a_winning_streak": _longest_run(matches, lambda m: m["winner"] == "a"),
+        "b_winning_streak": _longest_run(matches, lambda m: m["winner"] == "b"),
+        "a_unbeaten_streak": _longest_run(matches, lambda m: m["winner"] != "b"),
+        "b_unbeaten_streak": _longest_run(matches, lambda m: m["winner"] != "a"),
+    }
+
+
+def venue_records(team_a, team_b, matches):
+    """The record split by where the match was played: at Team A's home,
+    at Team B's home, or on neutral ground (the dataset marks neutral venues)."""
+    groups = [
+        ("home_a", f"{team_a} at home", lambda m: not m["neutral"] and m["home_team"] == team_a),
+        ("home_b", f"{team_b} at home", lambda m: not m["neutral"] and m["home_team"] == team_b),
+        ("neutral", "Neutral ground", lambda m: m["neutral"]),
+    ]
+    records = []
+    for venue_id, label, belongs in groups:
+        group = [m for m in matches if belongs(m)]
+        records.append({
+            "id": venue_id,
+            "label": label,
+            "matches": len(group),
+            "a_wins": sum(m["winner"] == "a" for m in group),
+            "draws": sum(m["winner"] == "draw" for m in group),
+            "b_wins": sum(m["winner"] == "b" for m in group),
+            "a_goals": sum(m["a_goals"] for m in group),
+            "b_goals": sum(m["b_goals"] for m in group),
+        })
+    return records
 
 
 def _short(match):
