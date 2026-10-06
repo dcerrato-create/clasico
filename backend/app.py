@@ -6,6 +6,7 @@ Run locally:  python app.py   (listens on http://127.0.0.1:5001)
 """
 
 import os
+from datetime import date
 from pathlib import Path
 
 from dotenv import load_dotenv
@@ -159,8 +160,11 @@ def stats():
         "team_b": data.team_info(team_b),
         "tournament": tournament,
         "matches": len(counted),
+        "overview": data.overview(counted, today=date.today()),
         "record_book": data.record_book(team_a, team_b, counted),
         "venues": data.venue_records(team_a, team_b, counted),
+        "shootouts": data.shootout_stats(team_a, team_b, counted),
+        "competitive_vs_friendly": data.competitive_vs_friendly(counted),
     })
 
 

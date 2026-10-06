@@ -12,6 +12,7 @@ import csv
 import json
 import unicodedata
 from collections import Counter
+from datetime import date
 from pathlib import Path
 
 from config import ALWAYS_SHOWN_TOURNAMENTS, EXTRA_ALIASES, MAX_TOURNAMENT_CHIPS, TOURNAMENT_LABELS
@@ -73,10 +74,13 @@ for row in _read_csv("goalscorers.csv"):
         "penalty": row["penalty"] == "TRUE",
     })
 
-SHOOTOUTS = {
-    (row["date"], row["home_team"], row["away_team"]): row["winner"]
-    for row in _read_csv("shootouts.csv")
-}
+SHOOTOUTS = {}             # match key -> the team that won the shootout
+SHOOTOUT_FIRST_SHOOTER = {}  # match key -> the team that took the first kick (often unknown)
+for row in _read_csv("shootouts.csv"):
+    key = (row["date"], row["home_team"], row["away_team"])
+    SHOOTOUTS[key] = row["winner"]
+    if row["first_shooter"]:
+        SHOOTOUT_FIRST_SHOOTER[key] = row["first_shooter"]
 
 with open(DATA_DIR / "flag_codes.json", encoding="utf-8") as f:
     FLAG_CODES = json.load(f)
@@ -159,6 +163,7 @@ def head_to_head(team_a, team_b):
             # score (usually a draw; sometimes a win in a two-legged tie) and
             # we report who won the shootout separately.
             "shootout_winner": SHOOTOUTS.get(key),
+            "shootout_first_shooter": SHOOTOUT_FIRST_SHOOTER.get(key),
             "scorers": GOALS.get(key, []),
         })
     matches.sort(key=lambda m: m["date"])
@@ -262,6 +267,99 @@ def _longest_run(matches, counts):
     return best
 
 
+def _percent(part, whole):
+    """A whole-number percentage, or None when there is nothing to divide by
+    (so the page can show a dash instead of a broken number)."""
+    return round(100 * part / whole) if whole else None
+
+
+def _record(matches):
+    """Wins, draws and goals for a group of matches, with percentages."""
+    total = len(matches)
+    a_wins = sum(m["winner"] == "a" for m in matches)
+    b_wins = sum(m["winner"] == "b" for m in matches)
+    draws = total - a_wins - b_wins
+    return {
+        "matches": total,
+        "a_wins": a_wins,
+        "draws": draws,
+        "b_wins": b_wins,
+        "a_goals": sum(m["a_goals"] for m in matches),
+        "b_goals": sum(m["b_goals"] for m in matches),
+        "a_pct": _percent(a_wins, total),
+        "draws_pct": _percent(draws, total),
+        "b_pct": _percent(b_wins, total),
+    }
+
+
+def overview(matches, today):
+    """The big picture: record with percentages, goals per game, clean
+    sheets and the last meeting. `today` is a date, used for "days since"."""
+    record = _record(matches)
+    total = record["matches"]
+    per_game = lambda goals: round(goals / total, 2) if total else None  # noqa: E731
+    last = matches[-1] if matches else None
+    return {
+        **record,
+        "goals_per_game": per_game(record["a_goals"] + record["b_goals"]),
+        "a_goals_per_game": per_game(record["a_goals"]),
+        "b_goals_per_game": per_game(record["b_goals"]),
+        # A clean sheet for Team A = a match where Team B did not score.
+        "a_clean_sheets": sum(m["b_goals"] == 0 for m in matches),
+        "b_clean_sheets": sum(m["a_goals"] == 0 for m in matches),
+        "last_meeting": _short_match(last) if last else None,
+        "days_since_last_meeting": (today - date.fromisoformat(last["date"])).days if last else None,
+    }
+
+
+def shootout_stats(team_a, team_b, matches):
+    """Penalty shootouts: how many, who won them, and whether shooting first helped."""
+    shootouts = [m for m in matches if m["shootout_winner"]]
+    total = len(shootouts)
+    a_wins = sum(m["shootout_winner"] == team_a for m in shootouts)
+    b_wins = sum(m["shootout_winner"] == team_b for m in shootouts)
+    # The dataset only knows who shot first for some shootouts.
+    with_first = [m for m in shootouts if m["shootout_first_shooter"]]
+    return {
+        "total": total,
+        "a_wins": a_wins,
+        "b_wins": b_wins,
+        "a_pct": _percent(a_wins, total),
+        "b_pct": _percent(b_wins, total),
+        "first_shooter_known": len(with_first),
+        "first_shooter_won": sum(m["shootout_first_shooter"] == m["shootout_winner"] for m in with_first),
+        "list": [
+            {**_short_match(m), "winner": m["shootout_winner"], "first_shooter": m["shootout_first_shooter"]}
+            for m in shootouts
+        ],
+    }
+
+
+def competitive_vs_friendly(matches):
+    """The record in friendlies, and in everything else ("competitive")."""
+    friendlies = [m for m in matches if m["tournament"] == "Friendly"]
+    competitive = [m for m in matches if m["tournament"] != "Friendly"]
+    return {
+        "competitive": {"id": "competitive", **_record(competitive)},
+        "friendly": {"id": "friendly", **_record(friendlies)},
+    }
+
+
+def _most_common_score(matches):
+    """The scoreline that happened most often, counted either way round
+    (a 2-1 win for either team is "2-1"). Ties go to the most recent one."""
+    if not matches:
+        return None
+    counts = Counter()
+    latest = {}
+    for m in matches:  # oldest first, so `latest` ends up with the last date
+        score = (max(m["a_goals"], m["b_goals"]), min(m["a_goals"], m["b_goals"]))
+        counts[score] += 1
+        latest[score] = m["date"]
+    high, low = max(counts, key=lambda score: (counts[score], latest[score]))
+    return {"score": f"{high}-{low}", "times": counts[(high, low)], "last_date": latest[(high, low)]}
+
+
 def record_book(team_a, team_b, matches):
     """The records of a rivalry: biggest wins, highest score, longest streaks."""
     # "Biggest" = widest margin; if equal, more goals; if still equal, the latest.
@@ -279,6 +377,7 @@ def record_book(team_a, team_b, matches):
         "b_winning_streak": _longest_run(matches, lambda m: m["winner"] == "b"),
         "a_unbeaten_streak": _longest_run(matches, lambda m: m["winner"] != "b"),
         "b_unbeaten_streak": _longest_run(matches, lambda m: m["winner"] != "a"),
+        "most_common_score": _most_common_score(matches),
     }
 
 
@@ -293,16 +392,7 @@ def venue_records(team_a, team_b, matches):
     records = []
     for venue_id, label, belongs in groups:
         group = [m for m in matches if belongs(m)]
-        records.append({
-            "id": venue_id,
-            "label": label,
-            "matches": len(group),
-            "a_wins": sum(m["winner"] == "a" for m in group),
-            "draws": sum(m["winner"] == "draw" for m in group),
-            "b_wins": sum(m["winner"] == "b" for m in group),
-            "a_goals": sum(m["a_goals"] for m in group),
-            "b_goals": sum(m["b_goals"] for m in group),
-        })
+        records.append({"id": venue_id, "label": label, **_record(group)})
     return records
 
 

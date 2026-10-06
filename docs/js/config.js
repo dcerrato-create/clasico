@@ -66,4 +66,28 @@ const ERA_CHART = {
   stagger: 120,          // delay between one decade and the next
 };
 
+// The More Statistics tab.
+const STATS = {
+  // The subsections, in the order they appear. Remove a line to hide one.
+  order: ["overview", "record_book", "venues", "shootouts", "competitive"],
+
+  // The heading of each subsection.
+  labels: {
+    overview: "Overview",
+    record_book: "Record Book",
+    venues: "Home and Away",
+    shootouts: "Penalty Shootouts",
+    competitive: "Competitive vs Friendly",
+  },
+
+  // Colors. Team A and Team B always use their own team colors.
+  drawColor: "#7f8aa0",     // draws in the percentage bars
+  neutralColor: "#7f8aa0",  // the stripe on cards that belong to neither team
+
+  barGrowTime: 800,         // milliseconds a percentage bar takes to grow in
+  cardStagger: 70,          // milliseconds between one card appearing and the next
+
+  shootoutNote: "Shootout data shows the winner only, not the shootout score.",
+};
+
 /* ========================== end of CONFIG ================================ */
