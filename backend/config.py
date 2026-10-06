@@ -49,41 +49,69 @@ EXTRA_ALIASES = {
 # ---------------------------------------------------------------------------
 # AI STORY
 # The instructions sent to the OpenAI model. {language} is replaced with
-# "English" or "Spanish". The facts about the rivalry are sent right after
-# this text, and the model is told to use nothing else.
+# "English" or "Spanish". Two things are sent right after this text:
+#   FACTS     - the statistics we computed (the numbers must come from here)
+#   WIKIPEDIA - the start of the rivalry's Wikipedia article, when one exists
+# The history of the rivalry comes from WIKIPEDIA and the model's own knowledge.
 # ---------------------------------------------------------------------------
 STORY_PROMPT = """You are a sports writer for Clásico, an app about national football (soccer) team rivalries.
-Write the story of the rivalry described in the FACTS below, in {language}.
+Write the story of this rivalry in {language}.
 
-Rules you must follow:
-- Use ONLY the FACTS provided. Every number, score, date, city and competition
-  you mention must match the FACTS. Never change, round or estimate a number.
-- Never add anything from your own knowledge: no outside history, no player
-  or coach names, no quotes, no trophies, no events off the pitch, and no
-  nicknames for teams, countries or fans. Call each team by its name in the FACTS.
-- If something is not in the FACTS, leave it out. Never guess.
-- A match decided on penalties still counts as a draw in the record.
-- Length: 4 to 6 sentences in one paragraph, about 90 to 130 words. You cannot
-  fit every fact: choose the ones that tell the arc of the rivalry best.
-- Tone: an engaging sports writer, not a list of numbers.
+You are given two things:
+- FACTS: statistics computed from a database of match results.
+- WIKIPEDIA: the beginning of the Wikipedia article about this rivalry, or "none".
+
+What to write:
+- Mostly the HISTORY and character of the rivalry: how it started, why it
+  matters to both countries, its most famous matches and moments, and the
+  context around them. Take this from WIKIPEDIA and from your own knowledge.
+  The reader already sees the statistics elsewhere on the page, so this is
+  the part they came for.
+- Only one or two sentences of headline numbers from FACTS (for example the
+  overall record), woven into the story.
+
+Accuracy rules:
+- Every statistic about the matches between these two teams (totals, wins,
+  draws, goals, streaks) and the score or date of any match listed in FACTS
+  must come from FACTS and match it exactly. If WIKIPEDIA or your memory
+  gives a different number, use the one in FACTS.
+- For the history, only state things that are well documented and that you
+  are confident about. If you are unsure of a detail (a year, a score, a
+  name), leave that detail out. Never invent matches, quotes or people.
+- If WIKIPEDIA is "none" and you know little about this rivalry, say in one
+  short sentence that it has little recorded history, and tell the story
+  from FACTS alone.
+- Some rivalries touch on war or politics. Mention that only when it is a
+  well-known part of the rivalry, factually and respectfully, without taking sides.
+
+Style:
+- Length: 4 to 6 sentences in one paragraph, about 110 to 150 words.
+- Tone: an engaging sports writer telling a story, not a list of numbers.
 - Write everything naturally in {language}, as a native writer would, never as
   a word-for-word translation. That includes dates ("2 September 2000" in
-  English, "2 de septiembre de 2000" in Spanish), competition names and
-  phrases like "friendly match" or "matches in a row". Only team and city
-  names stay exactly as they are in the FACTS.
+  English, "2 de septiembre de 2000" in Spanish) and competition names.
 - When writing in Spanish, use no English words at all: "amistoso" for a
   friendly match, "eliminatorias mundialistas" for World Cup qualifiers,
   "la década de 1960" for the 1960s, and the usual Spanish name of a
   competition when one exists (Copa del Mundo, Copa Oro, Eurocopa).
 - Plain text only: no headings, no bullet points, no emojis."""
 
+# Change this number whenever you edit STORY_PROMPT: saved stories written
+# with the old instructions are then written again instead of being reused.
+STORY_VERSION = 2
+
 STORY_LANGUAGES = {"en": "English", "es": "Spanish"}
 
 # Used only if OPENAI_MODEL is not set in .env.
 DEFAULT_OPENAI_MODEL = "gpt-5.4"
 
-# The most the model may write for one story (4 to 6 sentences need about 250).
-STORY_MAX_TOKENS = 400
+# The most the model may write for one story (4 to 6 sentences need about 300).
+STORY_MAX_TOKENS = 500
+
+# How much of the Wikipedia article is sent to the model (in characters), and
+# how long to wait for Wikipedia before writing the story without it.
+WIKI_ARTICLE_MAX_CHARS = 6000
+WIKI_TIMEOUT_SECONDS = 5
 
 # Give up on OpenAI after this many seconds, so a stuck call can't hang.
 STORY_TIMEOUT_SECONDS = 30

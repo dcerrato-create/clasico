@@ -203,7 +203,7 @@ def ai_story():
     ever calling OpenAI (the page uses that when it opens from a shared link).
 
     The answer is a stream of lines, each one a small JSON object:
-        {"type": "start", "cached": false, "model": "gpt-5.4"}
+        {"type": "start", "cached": false, "model": "gpt-5.4", "source": {...} or null}
         {"type": "text", "text": "Few rivalries "}      (many of these)
         {"type": "done"}
     or  {"type": "error", "message": "..."}  if OpenAI fails halfway.
@@ -226,18 +226,19 @@ def ai_story():
         return jsonify({"cached": False})  # not written yet, and we were told not to write it
 
     if cached:
-        model = cached["model"]
+        model, source = cached["model"], cached.get("source")
         pieces = iter([cached["story"]])  # the whole saved story, in one piece
     else:
         # Behind a host like Render the visitor's address arrives in this header.
         visitor = request.headers.get("X-Forwarded-For", request.remote_addr or "unknown").split(",")[0].strip()
-        model, pieces = story.start_story(team_a, team_b, matches, lang, visitor)  # the one OpenAI call
+        model, source, pieces = story.start_story(team_a, team_b, matches, lang, visitor)  # the one OpenAI call
 
     def line(event):
         return json.dumps(event, ensure_ascii=False) + "\n"
 
     def send():
-        yield line({"type": "start", "cached": cached is not None, "model": model})
+        # "source" is the Wikipedia article the history was taken from, if any.
+        yield line({"type": "start", "cached": cached is not None, "model": model, "source": source})
         try:
             for text in pieces:
                 yield line({"type": "text", "text": text})

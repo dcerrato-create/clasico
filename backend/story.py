@@ -3,11 +3,13 @@ story.py - writes the "AI Story" paragraph with the OpenAI API, live.
 
 How one story is made:
   1. build_facts() gathers the numbers we already computed for the rivalry.
-     Those facts are the ONLY thing the model is given (see STORY_PROMPT in
-     config.py, which tells it to use nothing else).
-  2. start_story() makes exactly ONE call to OpenAI and hands back the text
+     The model must take every statistic from these facts.
+  2. wiki.py looks for the rivalry's Wikipedia article. Its text, plus what
+     the model already knows, is where the HISTORY in the story comes from
+     (see STORY_PROMPT in config.py for the exact rules).
+  3. start_story() makes exactly ONE call to OpenAI and hands back the text
      piece by piece as it is generated, so the page can show it being typed.
-  3. When the story is complete it is saved in backend/cache/stories.json.
+  4. When the story is complete it is saved in backend/cache/stories.json.
 
 What protects the OpenAI credits:
   - Cache: a rivalry + language is only ever written once, even after a
@@ -29,6 +31,7 @@ from pathlib import Path
 import openai
 
 import data
+import wiki
 from config import (
     DEFAULT_OPENAI_MODEL,
     STORY_LANGUAGES,
@@ -39,6 +42,7 @@ from config import (
     STORY_MAX_TOKENS,
     STORY_PROMPT,
     STORY_TIMEOUT_SECONDS,
+    STORY_VERSION,
 )
 from errors import ApiError
 
@@ -52,7 +56,7 @@ _daily = {"day": date.today(), "count": 0}  # new stories today, everyone combin
 
 
 # ---------------------------------------------------------------------------
-# Cache: {"Argentina|Brazil|en|110|2025-03-25": {"story": "...", "model": "gpt-5.4"}}
+# Cache: {"Argentina|Brazil|en|110|2025-03-25|v2": {"story", "model", "source"}}
 # ---------------------------------------------------------------------------
 
 def _load_cache():
@@ -71,7 +75,8 @@ def _cache_key(team_a, team_b, matches, lang):
     # The match count and latest date are part of the key, so a story is
     # written again automatically when the dataset gets new matches.
     first, second = sorted([team_a, team_b])
-    return "|".join([first, second, lang, str(len(matches)), matches[-1]["date"]])
+    # STORY_VERSION changes when the prompt does, which also starts a fresh story.
+    return "|".join([first, second, lang, str(len(matches)), matches[-1]["date"], f"v{STORY_VERSION}"])
 
 
 def check_language(lang):
@@ -80,7 +85,7 @@ def check_language(lang):
 
 
 def get_cached(team_a, team_b, matches, lang):
-    """The saved story as {"story", "model"}, or None if it was never written."""
+    """The saved story as {"story", "model", "source"}, or None if it was never written."""
     with _lock:
         return _cache.get(_cache_key(team_a, team_b, matches, lang))
 
@@ -188,8 +193,9 @@ def build_facts(team_a, team_b, matches):
 def start_story(team_a, team_b, matches, lang, visitor):
     """Start writing a story that is not in the cache.
 
-    Makes the one call to OpenAI and returns (model name, pieces), where
-    `pieces` yields the text bit by bit as the model writes it. Problems that
+    Makes the one call to OpenAI and returns (model name, source, pieces).
+    `source` is the Wikipedia article used for the history ({"title", "url"})
+    or None, and `pieces` yields the text bit by bit as the model writes it. Problems that
     happen before any text arrives (no key, rate limit, OpenAI refusing) are
     raised as ApiError with a friendly message.
     """
@@ -210,6 +216,12 @@ def start_story(team_a, team_b, matches, lang, visitor):
     first, second = sorted([team_a, team_b])
     facts = json.dumps(build_facts(first, second, data.head_to_head(first, second)), ensure_ascii=False)
 
+    # The rivalry's Wikipedia article, if it has one (None if not, or if
+    # Wikipedia can't be reached: the story is then written without it).
+    article = wiki.find_rivalry_article(first, second)
+    source = {"title": article["title"], "url": article["url"]} if article else None
+    wikipedia = f'"{article["title"]}"\n{article["text"]}' if article else "none"
+
     print(f"OpenAI call: new {STORY_LANGUAGES[lang]} story for {first} v {second} ({model})", flush=True)
     try:
         # max_retries=0: exactly one call, never an automatic second try.
@@ -218,7 +230,7 @@ def start_story(team_a, team_b, matches, lang, visitor):
             model=model,
             messages=[
                 {"role": "system", "content": STORY_PROMPT.format(language=STORY_LANGUAGES[lang])},
-                {"role": "user", "content": f"FACTS:\n{facts}"},
+                {"role": "user", "content": f"FACTS:\n{facts}\n\nWIKIPEDIA:\n{wikipedia}"},
             ],
             max_completion_tokens=STORY_MAX_TOKENS,
             stream=True,
@@ -247,12 +259,12 @@ def start_story(team_a, team_b, matches, lang, visitor):
             with _lock:
                 _in_progress.discard(key)
                 if finished and written:  # only complete stories are saved
-                    _cache[key] = {"story": "".join(written).strip(), "model": model}
+                    _cache[key] = {"story": "".join(written).strip(), "model": model, "source": source}
                     CACHE_FILE.parent.mkdir(exist_ok=True)
                     with open(CACHE_FILE, "w", encoding="utf-8") as f:
                         json.dump(_cache, f, ensure_ascii=False, indent=1)
 
-    return model, pieces()
+    return model, source, pieces()
 
 
 def _friendly_error(err, model):
