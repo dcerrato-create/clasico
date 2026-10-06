@@ -473,6 +473,82 @@ button:disabled { cursor: not-allowed; opacity: 0.6; }
   .card { padding: 26px; }
 }
 
+/* ---------- Recent Games per Country ---------- */
+
+.recent-intro { margin: 0 0 14px; color: var(--muted); }
+.recent-label {
+  display: block;
+  font-family: var(--font-display);
+  font-size: 1.15rem;
+  letter-spacing: 0.12em;
+  margin-bottom: 4px;
+}
+#recent-form { max-width: 460px; }
+#recent-results:not(:empty) { margin-top: 18px; }
+
+.recent-heading {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0 0 10px;
+  font-family: var(--font-display);
+  font-size: 1.5rem;
+  letter-spacing: 0.05em;
+  line-height: 1.1;
+}
+.recent-heading .flag { width: 34px; }
+.recent-status { margin: 0; color: var(--muted); }
+.recent-error { color: var(--danger); font-weight: 600; }
+
+.recent-list { display: grid; gap: 6px; }
+
+/* One game. It is a button: clicking it opens the rivalry with that opponent. */
+.recent-row {
+  display: grid;
+  grid-template-columns: 34px 52px 1fr;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 8px 12px;
+  background: rgba(0, 0, 0, 0.55);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text);
+  text-align: left;
+  animation: stat-in 0.4s cubic-bezier(0.2, 1.2, 0.4, 1) both; /* rows rise in one by one */
+  transition: transform 0.15s ease, border-color 0.15s ease;
+}
+.recent-row:hover { transform: translateX(4px); border-color: var(--text); }
+
+/* W / D / L */
+.recent-result {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 4px;
+  font-family: var(--font-impact);
+  font-size: 1.05rem;
+  color: #000;
+  text-shadow: 0 0 3px rgba(255, 255, 255, 0.7);
+}
+.recent-result.draw { background: var(--draw); }
+.recent-result.loss { background: transparent; color: var(--muted); border: 1px solid var(--muted); text-shadow: none; }
+
+.recent-score { font-family: var(--font-impact); font-size: 1.5rem; line-height: 1; text-align: center; white-space: nowrap; }
+.recent-info { display: grid; gap: 2px; min-width: 0; }
+.recent-opponent { display: flex; align-items: center; gap: 8px; font-weight: 700; overflow-wrap: anywhere; }
+.recent-opponent .flag { width: 24px; }
+.recent-vs { color: var(--muted); font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; }
+.recent-details { color: var(--muted); font-size: 0.82rem; }
+.recent-go { display: none; color: var(--muted); font-size: 0.8rem; font-weight: 700; white-space: nowrap; }
+.recent-row:hover .recent-go { color: var(--text); }
+
+@media (min-width: 700px) {
+  .recent-row { grid-template-columns: 34px 60px 1fr auto; gap: 14px; padding: 10px 16px; }
+  .recent-go { display: block; }
+}
+
 /* ---------- 2. Cinematic clash (full-screen, built by js/clash.js) ---------- */
 
 .clash-overlay {
@@ -1547,5 +1623,5 @@ button:disabled { cursor: not-allowed; opacity: 0.6; }
   .step, .side-name, .stage-vs, .primary, .featured-card { transition: none; }
   .stage.quick, .stage.quick .side, .stage.quick .stage-vs, .stage.quick .clasico-name { animation: none; }
   .era-bar, .era-num, .era-draw-num { transition: none; }
-  .stat-card, .record-bar.grow { animation: none; }
+  .stat-card, .record-bar.grow, .recent-row { animation: none; }
 }

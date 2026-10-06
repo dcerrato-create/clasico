@@ -29,6 +29,9 @@ TOURNAMENT_LABELS = {
 # even if that means going over this number.
 MAX_TOURNAMENT_CHIPS = 8
 
+# The most matches the "recent games" endpoint will return in one answer.
+MAX_RECENT_MATCHES = 30
+
 # ---------------------------------------------------------------------------
 # EXTRA SEARCH NAMES
 # Nicknames people might type that are not in the dataset.

@@ -136,6 +136,33 @@ def list_teams():
     return [{**team_info(name), "aliases": ALIASES[name]} for name in TEAM_NAMES]
 
 
+def recent_matches(team, limit):
+    """The latest matches one team played, newest first, seen from its side."""
+    played = [m for m in MATCHES if team in (m["home_team"], m["away_team"])]
+    played.sort(key=lambda m: m["date"], reverse=True)
+
+    matches = []
+    for m in played[:limit]:
+        is_home = m["home_team"] == team
+        goals_for = m["home_score"] if is_home else m["away_score"]
+        goals_against = m["away_score"] if is_home else m["home_score"]
+        key = (m["date"], m["home_team"], m["away_team"])
+        matches.append({
+            "date": m["date"],
+            "opponent": team_info(m["away_team"] if is_home else m["home_team"]),
+            "goals_for": goals_for,
+            "goals_against": goals_against,
+            "result": "win" if goals_for > goals_against else "loss" if goals_for < goals_against else "draw",
+            # where it was played, from this team's point of view
+            "venue": "neutral" if m["neutral"] else "home" if is_home else "away",
+            "tournament": tournament_label(m["tournament"]),
+            "city": m["city"],
+            "country": m["country"],
+            "shootout_winner": SHOOTOUTS.get(key),
+        })
+    return matches
+
+
 def head_to_head(team_a, team_b):
     """Every match between the two teams, oldest first, seen from A's side."""
     pair = {team_a, team_b}

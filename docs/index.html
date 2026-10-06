@@ -9,7 +9,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Anton&family=Bebas+Neue&family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css?v=6">
+  <link rel="stylesheet" href="style.css?v=7">
 </head>
 <body>
   <header class="site-header">
@@ -72,6 +72,24 @@
       <h2 id="fierce-heading" class="section-heading">Famous Fierce Rivalries</h2>
       <div id="fierce" class="featured-grid compact"></div>
     </section>
+
+    <!-- Recent games of one country: another way into a rivalry (js/recent.js) -->
+    <section aria-labelledby="recent-heading">
+      <h2 id="recent-heading" class="section-heading">Recent Games per Country</h2>
+      <div class="card recent-card">
+        <p class="recent-intro">Pick a country to see its latest games. Click a game to open that rivalry.</p>
+        <form id="recent-form" novalidate>
+          <label for="team-recent" class="recent-label">Country</label>
+          <div class="combo" id="combo-recent">
+            <span class="combo-flag"></span>
+            <input id="team-recent" type="text" placeholder="Search a team…" autocomplete="off"
+                   role="combobox" aria-expanded="false" aria-controls="list-recent">
+            <ul class="combo-list" id="list-recent" role="listbox" hidden></ul>
+          </div>
+        </form>
+        <div id="recent-results" aria-live="polite"></div>
+      </div>
+    </section>
   </main>
 
   <footer class="site-footer">
@@ -97,6 +115,7 @@
   <script src="js/era.js"></script>
   <script src="js/stats.js"></script>
   <script src="js/timeline.js"></script>
+  <script src="js/recent.js"></script>
   <script src="js/main.js"></script>
 </body>
 </html>

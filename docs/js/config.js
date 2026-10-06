@@ -90,4 +90,10 @@ const STATS = {
   shootoutNote: "Shootout data shows the winner only, not the shootout score.",
 };
 
+// "Recent Games per Country", the section at the bottom of the home screen.
+const RECENT = {
+  gamesShown: 8,    // how many of the team's latest matches to list
+  defaultTeam: "",  // a team to show when the page opens, e.g. "Honduras" ("" = none)
+};
+
 /* ========================== end of CONFIG ================================ */

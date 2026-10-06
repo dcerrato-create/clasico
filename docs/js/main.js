@@ -161,6 +161,9 @@ async function init() {
 
   await loadTeams();
 
+  // "Recent Games per Country": clicking one of a team's games opens that rivalry.
+  createRecentSection(state.teams, pickRivalry);
+
   // Open a shared link like index.html?a=Argentina&b=Brazil
   const params = new URLSearchParams(location.search);
   if (params.get("a") && params.get("b")) {

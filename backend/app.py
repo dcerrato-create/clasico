@@ -20,6 +20,7 @@ load_dotenv(Path(__file__).parent.parent / ".env")
 
 import data  # noqa: E402  (imported after load_dotenv on purpose)
 import story  # noqa: E402
+from config import MAX_RECENT_MATCHES  # noqa: E402
 from errors import ApiError  # noqa: E402
 
 app = Flask(__name__)
@@ -106,6 +107,30 @@ def rivalry():
         "categories": categories,
         "matches": matches,
     })
+
+
+@app.get("/api/recent")
+def recent():
+    """The latest matches ONE team played, for "Recent Games per Country".
+
+    Example: /api/recent?team=Honduras&limit=8
+    Each match names the opponent, so the page can open that rivalry.
+    """
+    team_text = (request.args.get("team") or "").strip()
+    if not team_text:
+        raise ApiError("Please pick a team.", 400)
+    team = data.resolve_team(team_text)
+    if team is None:
+        raise ApiError(f"We couldn't find a team called \"{team_text}\".", 404)
+
+    try:
+        limit = int(request.args.get("limit", 8))
+    except ValueError:
+        raise ApiError("\"limit\" must be a number, like 8.", 400)
+    if not 1 <= limit <= MAX_RECENT_MATCHES:
+        raise ApiError(f"\"limit\" must be between 1 and {MAX_RECENT_MATCHES}.", 400)
+
+    return jsonify({"team": data.team_info(team), "matches": data.recent_matches(team, limit)})
 
 
 def get_filtered_matches():

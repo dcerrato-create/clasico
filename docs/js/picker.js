@@ -29,7 +29,8 @@ function searchTeams(teams, text) {
 
 // Turns one .combo element into a working searchable dropdown.
 // Returns { getValue, setValue } so main.js can read and set the team.
-function createTeamPicker(root, teams) {
+// onChoose(team) is optional: it is called when a team is picked from the list.
+function createTeamPicker(root, teams, onChoose) {
   const input = root.querySelector("input");
   const list = root.querySelector(".combo-list");
   const flagSlot = root.querySelector(".combo-flag");
@@ -51,6 +52,7 @@ function createTeamPicker(root, teams) {
     input.value = team.name;
     showFlagFor(team.name);
     close();
+    if (onChoose) onChoose(team);
   }
 
   function setActive(index) {
