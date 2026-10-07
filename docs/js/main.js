@@ -181,9 +181,15 @@ function renderRivalry(data) {
     state.openedFromLink = false; // every later rivalry is one the visitor picked
     renderExplore(dom.result, data, teamColors);
   }
-  // Jump there right away: the clash covers the screen while this happens,
-  // and the big flags need to know where the small ones ended up.
-  dom.result.scrollIntoView({ behavior: "instant", block: "start" });
+  // Jump into place right away: the clash covers the screen while this
+  // happens, and the big flags need to know where the small ones ended up.
+  if (data.summary.total_matches === 0) {
+    // Never played: there is nothing to read below the short "never met"
+    // card, so stay at the very top, where the team picker is.
+    window.scrollTo({ top: 0, behavior: "instant" });
+  } else {
+    dom.result.scrollIntoView({ behavior: "instant", block: "start" });
+  }
 }
 
 async function init() {
