@@ -50,8 +50,9 @@ def tournament_label(tournament):
 with open(DATA_DIR / "flag_codes.json", encoding="utf-8") as f:
     FLAG_CODES = json.load(f)
 
-# Flags flagcdn.com doesn't have (countries that no longer exist). These are
-# image files kept in docs/flags/: {"Yugoslavia": "flags/yugoslavia.svg", ...}
+# Flags we keep ourselves, in docs/flags/, because flagcdn.com doesn't have them
+# (countries that no longer exist) or has an out-of-date one (Honduras):
+# {"Yugoslavia": "flags/yugoslavia.svg", ...}. These win over the flagcdn code.
 with open(DATA_DIR / "flag_files.json", encoding="utf-8") as f:
     FLAG_FILES = json.load(f)
 
