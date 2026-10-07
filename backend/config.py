@@ -37,6 +37,14 @@ MAX_TOURNAMENT_CHIPS = 8
 DATASET_URL = "https://raw.githubusercontent.com/martj42/international_results/master/"
 DATA_REFRESH_HOURS = 6
 
+# After the server starts, wait this long before the first check, so the
+# request that woke the server up is answered first.
+DATA_FIRST_CHECK_DELAY_SECONDS = 20
+
+# If the server runs as several processes, only one downloads. This is how
+# often the others look for the copy it saved.
+DATA_SHARE_CHECK_SECONDS = 60
+
 # The most matches the "recent games" endpoint will return in one answer.
 MAX_RECENT_MATCHES = 30
 

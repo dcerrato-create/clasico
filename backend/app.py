@@ -26,8 +26,8 @@ import unusual  # noqa: E402
 from config import MAX_RECENT_MATCHES  # noqa: E402
 from errors import ApiError  # noqa: E402
 
-# Load the newest saved copy of the dataset, then keep checking for updates
-# in the background (see refresh.py).
+# Keep the dataset up to date in the background (see refresh.py). This
+# returns straight away; the server starts with the copy that ships with the app.
 refresh.start()
 
 app = Flask(__name__)
@@ -94,6 +94,7 @@ def health():
         "data_last_checked": refresh.status["last_checked"],
         "data_last_updated": refresh.status["last_updated"],
         "data_check_result": refresh.status["result"],
+        "data_role": refresh.status["role"],
     })
 
 
