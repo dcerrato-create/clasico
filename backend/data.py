@@ -1,9 +1,9 @@
 """
 data.py - loads the CSV dataset into memory and answers questions about it.
 
-The CSVs are small (about 50,000 matches), so we read them once when the
-server starts and keep them in plain Python lists and dictionaries.
-No database is needed.
+The CSVs are small (about 50,000 matches), so we read them when the server
+starts (and again whenever refresh.py downloads a newer version) and keep
+them in plain Python lists and dictionaries. No database is needed.
 
 Dataset: https://github.com/martj42/international_results
 """
@@ -19,9 +19,12 @@ from config import ALWAYS_SHOWN_TOURNAMENTS, EXTRA_ALIASES, MAX_TOURNAMENT_CHIPS
 
 DATA_DIR = Path(__file__).parent / "data"
 
+# The four files that make up the dataset.
+DATASET_FILES = ["results.csv", "goalscorers.csv", "shootouts.csv", "former_names.csv"]
 
-def _read_csv(filename):
-    with open(DATA_DIR / filename, newline="", encoding="utf-8") as f:
+
+def _read_csv(folder, filename):
+    with open(folder / filename, newline="", encoding="utf-8") as f:
         return list(csv.DictReader(f))
 
 
@@ -41,46 +44,8 @@ def tournament_label(tournament):
 
 
 # ---------------------------------------------------------------------------
-# Load everything once, at import time
+# Things that never change while the server runs
 # ---------------------------------------------------------------------------
-
-# Every played match. Rows with "NA" scores are fixtures that have not been
-# played yet, so we skip them.
-MATCHES = []
-for row in _read_csv("results.csv"):
-    if not (row["home_score"].isdigit() and row["away_score"].isdigit()):
-        continue
-    MATCHES.append({
-        "date": row["date"],
-        "home_team": row["home_team"],
-        "away_team": row["away_team"],
-        "home_score": int(row["home_score"]),
-        "away_score": int(row["away_score"]),
-        "tournament": row["tournament"],
-        "city": row["city"],
-        "country": row["country"],
-        "neutral": row["neutral"] == "TRUE",
-    })
-
-# Goals and shootouts are looked up by (date, home team, away team).
-GOALS = {}
-for row in _read_csv("goalscorers.csv"):
-    key = (row["date"], row["home_team"], row["away_team"])
-    GOALS.setdefault(key, []).append({
-        "team": row["team"],
-        "scorer": row["scorer"],
-        "minute": int(row["minute"]) if row["minute"].isdigit() else None,
-        "own_goal": row["own_goal"] == "TRUE",
-        "penalty": row["penalty"] == "TRUE",
-    })
-
-SHOOTOUTS = {}             # match key -> the team that won the shootout
-SHOOTOUT_FIRST_SHOOTER = {}  # match key -> the team that took the first kick (often unknown)
-for row in _read_csv("shootouts.csv"):
-    key = (row["date"], row["home_team"], row["away_team"])
-    SHOOTOUTS[key] = row["winner"]
-    if row["first_shooter"]:
-        SHOOTOUT_FIRST_SHOOTER[key] = row["first_shooter"]
 
 with open(DATA_DIR / "flag_codes.json", encoding="utf-8") as f:
     FLAG_CODES = json.load(f)
@@ -95,27 +60,102 @@ with open(DATA_DIR / "flag_files.json", encoding="utf-8") as f:
 with open(DATA_DIR / "team_colors.json", encoding="utf-8") as f:
     TEAM_COLORS = json.load(f)
 
-TEAM_NAMES = sorted(
-    {m["home_team"] for m in MATCHES} | {m["away_team"] for m in MATCHES}
-)
 
-# Other names a team can be found under: former names from the dataset
-# (e.g. "Zaïre" -> DR Congo) plus the nicknames in config.py.
-ALIASES = {name: [] for name in TEAM_NAMES}
-for row in _read_csv("former_names.csv"):
-    if row["current"] in ALIASES:
-        ALIASES[row["current"]].append(row["former"])
-for name, extra in EXTRA_ALIASES.items():
-    if name in ALIASES:
-        ALIASES[name].extend(extra)
+# ---------------------------------------------------------------------------
+# The dataset. It is loaded when the server starts, and loaded AGAIN whenever
+# refresh.py downloads a newer version, so these are filled in by a function.
+# ---------------------------------------------------------------------------
 
-# normalized text -> official team name. Official names win over aliases.
-_LOOKUP = {}
-for name, aliases in ALIASES.items():
-    for alias in aliases:
-        _LOOKUP[_normalize(alias)] = name
-for name in TEAM_NAMES:
-    _LOOKUP[_normalize(name)] = name
+MATCHES = []                 # every played match, as a dictionary
+GOALS = {}                   # (date, home team, away team) -> the goals of that match
+SHOOTOUTS = {}               # match key -> the team that won the shootout
+SHOOTOUT_FIRST_SHOOTER = {}  # match key -> the team that took the first kick (often unknown)
+TEAM_NAMES = []              # every team, in alphabetical order
+ALIASES = {}                 # team -> other names it can be found under
+_LOOKUP = {}                 # normalized text -> official team name
+LOADED_FROM = None           # the folder the data currently in memory came from
+
+
+def load_dataset(folder=DATA_DIR):
+    """Read the four CSV files in `folder` and replace everything above.
+
+    Everything is built first and only swapped in at the very end, so a
+    request that arrives halfway through still sees complete (old) data.
+    Raises an error, and changes nothing, if a file is missing or broken.
+    """
+    global MATCHES, GOALS, SHOOTOUTS, SHOOTOUT_FIRST_SHOOTER, TEAM_NAMES, ALIASES, _LOOKUP, LOADED_FROM
+
+    # Every played match. Rows with "NA" scores are fixtures that have not
+    # been played yet, so we skip them.
+    matches = []
+    for row in _read_csv(folder, "results.csv"):
+        if not (row["home_score"].isdigit() and row["away_score"].isdigit()):
+            continue
+        matches.append({
+            "date": row["date"],
+            "home_team": row["home_team"],
+            "away_team": row["away_team"],
+            "home_score": int(row["home_score"]),
+            "away_score": int(row["away_score"]),
+            "tournament": row["tournament"],
+            "city": row["city"],
+            "country": row["country"],
+            "neutral": row["neutral"] == "TRUE",
+        })
+
+    # Goals and shootouts are looked up by (date, home team, away team).
+    goals = {}
+    for row in _read_csv(folder, "goalscorers.csv"):
+        key = (row["date"], row["home_team"], row["away_team"])
+        goals.setdefault(key, []).append({
+            "team": row["team"],
+            "scorer": row["scorer"],
+            "minute": int(row["minute"]) if row["minute"].isdigit() else None,
+            "own_goal": row["own_goal"] == "TRUE",
+            "penalty": row["penalty"] == "TRUE",
+        })
+
+    shootouts = {}
+    first_shooters = {}
+    for row in _read_csv(folder, "shootouts.csv"):
+        key = (row["date"], row["home_team"], row["away_team"])
+        shootouts[key] = row["winner"]
+        if row["first_shooter"]:
+            first_shooters[key] = row["first_shooter"]
+
+    team_names = sorted({m["home_team"] for m in matches} | {m["away_team"] for m in matches})
+
+    # Other names a team can be found under: former names from the dataset
+    # (e.g. "Zaïre" -> DR Congo) plus the nicknames in config.py.
+    aliases = {name: [] for name in team_names}
+    for row in _read_csv(folder, "former_names.csv"):
+        if row["current"] in aliases:
+            aliases[row["current"]].append(row["former"])
+    for name, extra in EXTRA_ALIASES.items():
+        if name in aliases:
+            aliases[name].extend(extra)
+
+    # normalized text -> official team name. Official names win over aliases.
+    lookup = {}
+    for name, names in aliases.items():
+        for alias in names:
+            lookup[_normalize(alias)] = name
+    for name in team_names:
+        lookup[_normalize(name)] = name
+
+    # All built without errors: swap the new data in.
+    MATCHES, GOALS, SHOOTOUTS, SHOOTOUT_FIRST_SHOOTER = matches, goals, shootouts, first_shooters
+    TEAM_NAMES, ALIASES, _LOOKUP, LOADED_FROM = team_names, aliases, lookup, folder
+
+
+def latest_match_date():
+    """The date of the newest match we have, e.g. "2026-08-26"."""
+    return max(m["date"] for m in MATCHES)
+
+
+# Start with the copy of the dataset that ships with the app. refresh.py
+# replaces it with a newer download when there is one.
+load_dataset()
 
 
 # ---------------------------------------------------------------------------

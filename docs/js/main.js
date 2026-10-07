@@ -57,6 +57,10 @@ async function loadTeams() {
     // Keep the same array object: the pickers hold a reference to it.
     state.teams.length = 0;
     state.teams.push(...data.teams);
+    // How recent the match data is (it changes when the dataset is updated).
+    document.getElementById("data-latest").textContent =
+      `Latest match in our data: ${formatDate(data.data.latest_match)} ` +
+      `(${data.data.matches.toLocaleString("en-US")} matches in total).`;
     dom.banner.hidden = true;
   } catch (err) {
     dom.bannerText.textContent = err.message;

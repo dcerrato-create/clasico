@@ -20,10 +20,15 @@ from werkzeug.exceptions import HTTPException
 load_dotenv(Path(__file__).parent.parent / ".env")
 
 import data  # noqa: E402  (imported after load_dotenv on purpose)
+import refresh  # noqa: E402
 import story  # noqa: E402
 import unusual  # noqa: E402
 from config import MAX_RECENT_MATCHES  # noqa: E402
 from errors import ApiError  # noqa: E402
+
+# Load the newest saved copy of the dataset, then keep checking for updates
+# in the background (see refresh.py).
+refresh.start()
 
 app = Flask(__name__)
 app.json.ensure_ascii = False  # keep "Copa América" readable in responses
@@ -81,14 +86,24 @@ def get_team_pair(team_a_text, team_b_text):
 
 @app.get("/api/health")
 def health():
-    """Quick check that the server is up."""
-    return jsonify({"status": "ok", "matches_loaded": len(data.MATCHES)})
+    """Quick check that the server is up, and how fresh its data is."""
+    return jsonify({
+        "status": "ok",
+        "matches_loaded": len(data.MATCHES),
+        "latest_match": data.latest_match_date(),
+        "data_last_checked": refresh.status["last_checked"],
+        "data_last_updated": refresh.status["last_updated"],
+        "data_check_result": refresh.status["result"],
+    })
 
 
 @app.get("/api/teams")
 def teams():
-    """All teams for the picker."""
-    return jsonify({"teams": data.list_teams()})
+    """All teams for the picker, plus how recent our match data is."""
+    return jsonify({
+        "teams": data.list_teams(),
+        "data": {"matches": len(data.MATCHES), "latest_match": data.latest_match_date()},
+    })
 
 
 @app.get("/api/rivalry")

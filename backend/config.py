@@ -29,6 +29,14 @@ TOURNAMENT_LABELS = {
 # even if that means going over this number.
 MAX_TOURNAMENT_CHIPS = 8
 
+# ---------------------------------------------------------------------------
+# KEEPING THE DATA UP TO DATE
+# The match results come from this public dataset. The server checks it when
+# it starts and then every DATA_REFRESH_HOURS hours, and loads any update.
+# ---------------------------------------------------------------------------
+DATASET_URL = "https://raw.githubusercontent.com/martj42/international_results/master/"
+DATA_REFRESH_HOURS = 6
+
 # The most matches the "recent games" endpoint will return in one answer.
 MAX_RECENT_MATCHES = 30
 

@@ -178,6 +178,7 @@ button:disabled { cursor: not-allowed; opacity: 0.6; }
   cursor: pointer; /* click or tap the title to open and close the note */
 }
 .teams-note[open] .teams-note-title { margin-bottom: 8px; }
+#data-latest { font-weight: 700; }
 
 .site-footer {
   border-top: 1px solid var(--border);

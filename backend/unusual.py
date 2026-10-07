@@ -148,6 +148,12 @@ def _compute():
     }
 
 
+def reset():
+    """Forget the computed lists (called when the dataset is updated)."""
+    global _computed
+    _computed = None
+
+
 def _get():
     global _computed
     if _computed is None:
