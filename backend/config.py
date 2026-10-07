@@ -36,7 +36,7 @@ MAX_RECENT_MATCHES = 30
 # UNUSUAL GAMES (the lists at the bottom of the home screen)
 # ---------------------------------------------------------------------------
 UNUSUAL_LIST_SIZE = 10   # entries in each list (the first 3 go on the podium)
-CHAOS_MAX_MARGIN = 3     # a "chaos game" is high-scoring but decided by this many goals or fewer
+CHAOS_MAX_MARGIN = 2     # a "chaos game" is high-scoring but decided by this many goals or fewer
 
 # "Ghost countries": teams in the dataset whose country no longer exists.
 # Names must match the dataset. (The Soviet Union and Serbia and Montenegro

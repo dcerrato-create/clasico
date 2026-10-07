@@ -116,7 +116,7 @@ const UNUSUAL = {
     one_time: "Pairs of teams that have met exactly once in history.",
     beatdowns: "The most one-sided results ever recorded.",
     waits: "The longest gaps between two meetings of the same teams.",
-    chaos: "The most goals in a match that still finished close (decided by 3 goals or fewer).",
+    chaos: "The most goals in a match that still finished close (decided by 2 goals or fewer).",
     most_played: "The rivalries with the most matches played.",
     oldest: "The oldest rivalries in international football, by the date of their first meeting.",
     ghosts: "National teams of countries that no longer exist, with the last match each one played.",
