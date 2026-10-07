@@ -195,6 +195,9 @@ function renderRivalry(data) {
 
 async function init() {
   applyColors();
+  // The "Which teams are here?" note starts closed on a phone, so the team
+  // picker stays on the first screen. Tapping its title opens it.
+  if (window.innerWidth < 700) document.getElementById("teams-note").open = false;
   pickerA = createTeamPicker(document.getElementById("combo-a"), state.teams);
   pickerB = createTeamPicker(document.getElementById("combo-b"), state.teams);
 

@@ -9,7 +9,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Anton&family=Bebas+Neue&family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css?v=20">
+  <link rel="stylesheet" href="style.css?v=22">
 </head>
 <body>
   <!-- Always on screen: goes back to the start and clears everything (see resetHome in js/main.js) -->
@@ -20,6 +20,24 @@
   <header class="site-header">
     <a class="logo" id="logo" href="./index.html">CL<span>Á</span>SICO</a>
     <p class="tagline"><span>Every national-team rivalry</span> <span>match by match</span></p>
+
+    <!-- Which teams are in the app, and why some have no flag.
+         Open on wide screens; on a phone it starts closed (see init in js/main.js) -->
+    <details class="teams-note" id="teams-note" open>
+      <summary class="teams-note-title">Which teams are here?</summary>
+      <p>
+        Clásico covers <strong>men's senior national teams only</strong>, in every full international
+        match on record since 1872. Most are countries. The data also includes countries that no longer
+        exist, like Yugoslavia and Czechoslovakia, and teams that represent regions, islands and
+        unrecognised territories outside FIFA, like Catalonia, Shetland and Abkhazia.
+        Clubs, women's teams and youth teams are not included.
+      </p>
+      <p>
+        <strong>About the flags:</strong> our match data has no flags in it. We can show a flag for
+        today's countries and territories, and for a few former countries. Most regional and
+        lesser-known teams have none available, so they appear with a ⚽ in place of a flag.
+      </p>
+    </details>
   </header>
 
   <main>
@@ -121,19 +139,19 @@
   <!-- Chart library (draws the Match Timeline) -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
 
-  <script src="js/config.js?v=20"></script>
-  <script src="js/api.js?v=20"></script>
-  <script src="js/flags.js?v=20"></script>
-  <script src="js/colors.js?v=20"></script>
-  <script src="js/picker.js?v=20"></script>
-  <script src="js/clash.js?v=20"></script>
-  <script src="js/reveal.js?v=20"></script>
-  <script src="js/story.js?v=20"></script>
-  <script src="js/era.js?v=20"></script>
-  <script src="js/stats.js?v=20"></script>
-  <script src="js/timeline.js?v=20"></script>
-  <script src="js/recent.js?v=20"></script>
-  <script src="js/unusual.js?v=20"></script>
-  <script src="js/main.js?v=20"></script>
+  <script src="js/config.js?v=22"></script>
+  <script src="js/api.js?v=22"></script>
+  <script src="js/flags.js?v=22"></script>
+  <script src="js/colors.js?v=22"></script>
+  <script src="js/picker.js?v=22"></script>
+  <script src="js/clash.js?v=22"></script>
+  <script src="js/reveal.js?v=22"></script>
+  <script src="js/story.js?v=22"></script>
+  <script src="js/era.js?v=22"></script>
+  <script src="js/stats.js?v=22"></script>
+  <script src="js/timeline.js?v=22"></script>
+  <script src="js/recent.js?v=22"></script>
+  <script src="js/unusual.js?v=22"></script>
+  <script src="js/main.js?v=22"></script>
 </body>
 </html>
