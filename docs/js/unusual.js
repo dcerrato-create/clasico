@@ -85,9 +85,10 @@ function createUnusualSection(teams, onPickRivalry) {
     const list = makeEl("div", "unusual-list");
     entries.slice(3).forEach((entry, index) => list.append(buildEntry(entry, "list-row", index + 3)));
     body.replaceChildren(podium, list);
-    // The small print for this list, if config.js has one (e.g. the ghost flags note).
+    // The small print for this list, if config.js has one (e.g. the ghost
+    // flags note). It goes at the top, right under the description.
     const note = UNUSUAL.notes && UNUSUAL.notes[active];
-    if (note) body.append(makeEl("p", "unusual-note", note));
+    if (note) body.prepend(makeEl("p", "unusual-note", note));
   }
 
   // ---------------------------------------------------------------------
