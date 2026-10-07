@@ -1099,6 +1099,15 @@ button:disabled { cursor: not-allowed; opacity: 0.6; }
 
 .never-met { margin: 24px 0 4px; font-size: 1.15rem; font-weight: 700; }
 .never-met-hint { margin: 0; color: var(--muted); }
+/* the two "recent games" buttons under the never-met message */
+.never-met-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 10px;
+  margin-top: 16px;
+}
+.never-met-buttons .secondary { display: inline-flex; align-items: center; gap: 10px; min-height: 44px; }
 
 .headline { margin-top: 26px; }
 

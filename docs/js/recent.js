@@ -6,7 +6,7 @@
 
 // Sets up the section. `teams` is the team list from main.js and
 // onPickRivalry(teamA, teamB) opens a rivalry (the same function the
-// featured cards use). Returns { reset } for the Home button.
+// featured cards use). Returns { reset, showTeam } for main.js.
 function createRecentSection(teams, onPickRivalry) {
   const form = document.getElementById("recent-form");
   const results = document.getElementById("recent-results");
@@ -95,6 +95,14 @@ function createRecentSection(teams, onPickRivalry) {
     if (RECENT.defaultTeam) show(RECENT.defaultTeam);
   }
 
+  // Show one team's recent games and scroll down to them (used by the
+  // buttons on the "never played each other" card).
+  function showTeam(teamName) {
+    picker.setValue(teamName);
+    show(teamName);
+    document.getElementById("recent-heading").scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+
   reset();
-  return { reset };
+  return { reset, showTeam };
 }

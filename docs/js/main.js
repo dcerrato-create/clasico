@@ -171,7 +171,8 @@ function renderRivalry(data) {
 
   // "Skip animation" swaps the full-screen clash for a quick one in the card.
   const quick = dom.skipAnimation.checked;
-  renderReveal(dom.result, data, teamColors, quick); // clash + flags + headline
+  // (the last part is for teams that never met: buttons to each team's recent games)
+  renderReveal(dom.result, data, teamColors, quick, (teamName) => recentSection.showTeam(teamName)); // clash + flags + headline
   // The first rivalry always gets the full clash; after it, offer the checkbox.
   dom.skipToggle.hidden = false;
   if (data.summary.total_matches > 0) {

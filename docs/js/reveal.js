@@ -66,7 +66,9 @@ function buildRecordItem(kind, label) {
 // Builds the reveal card inside `container` and plays the animation.
 // teamColors = { a, b, draw } from pickTeamColors() in colors.js.
 // quick = true plays a short clash inside the card instead of the full-screen one.
-function renderReveal(container, data, teamColors, quick = false) {
+// onViewRecent(teamName) is called by the "recent games" buttons shown when
+// the two teams have never played each other.
+function renderReveal(container, data, teamColors, quick = false, onViewRecent = null) {
   const { team_a: teamA, team_b: teamB, summary } = data;
 
   const card = makeEl("section", "card reveal");
@@ -104,6 +106,20 @@ function renderReveal(container, data, teamColors, quick = false) {
       `${teamA.name} and ${teamB.name} have never played each other.`);
     const hint = makeEl("p", "never-met-hint", "Try another pair, or one of the rivalries below.");
     card.append(note, hint);
+
+    // Two buttons, one per team, that jump to that team's recent games.
+    if (onViewRecent) {
+      const buttons = makeEl("div", "never-met-buttons");
+      for (const team of [teamA, teamB]) {
+        const possessive = team.name.endsWith("s") ? `${team.name}'` : `${team.name}'s`;
+        const button = makeEl("button", "secondary", `View ${possessive} recent games`);
+        button.type = "button";
+        button.prepend(createFlag(team));
+        button.addEventListener("click", () => onViewRecent(team.name));
+        buttons.append(button);
+      }
+      card.append(buttons);
+    }
     container.append(card);
     clashThenShow();
     return;
