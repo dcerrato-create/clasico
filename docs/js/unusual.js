@@ -146,8 +146,12 @@ function createUnusualSection(teams, onPickRivalry) {
     search.setAttribute("aria-label", "Search the one-time rivalries by team");
     const count = makeEl("p", "unusual-count");
     const fullList = makeEl("div", "unusual-list");
-    const more = makeEl("button", "secondary unusual-more", "Show more");
+    const more = makeEl("button", "secondary", "Show more");
     more.type = "button";
+    const less = makeEl("button", "secondary", "Show less");
+    less.type = "button";
+    const moreLess = makeEl("div", "unusual-more");
+    moreLess.append(more, less);
     let shown = UNUSUAL.listPageSize; // how many rows are on screen
 
     function drawFullList() {
@@ -161,6 +165,7 @@ function createUnusualSection(teams, onPickRivalry) {
         ? "No one-time rivalry matches that search."
         : `Showing ${visible.length.toLocaleString("en-US")} of ${matches.length.toLocaleString("en-US")}, newest first`;
       more.hidden = visible.length >= matches.length;
+      less.hidden = visible.length <= UNUSUAL.listPageSize; // nothing extra to take away
     }
     search.addEventListener("input", () => {
       shown = UNUSUAL.listPageSize; // a new search starts from the top
@@ -170,10 +175,18 @@ function createUnusualSection(teams, onPickRivalry) {
       shown += UNUSUAL.listPageSize;
       drawFullList();
     });
+    // "Show less" takes away the rows the last "Show more" added.
+    less.addEventListener("click", () => {
+      shown = Math.max(UNUSUAL.listPageSize, shown - UNUSUAL.listPageSize);
+      drawFullList();
+      // Keep the buttons in view: the list just got shorter above them.
+      moreLess.scrollIntoView({ behavior: "instant", block: "nearest" });
+    });
 
     async function loadFullList() {
       count.textContent = "Loading the full list…";
       more.hidden = true;
+      less.hidden = true;
       try {
         if (!allOneTime) allOneTime = (await apiGet("/api/one-time")).matches;
         if (thisDraw !== drawId) return;
@@ -190,7 +203,7 @@ function createUnusualSection(teams, onPickRivalry) {
 
     body.replaceChildren(
       makeEl("h3", "unusual-heading", "Five at random"), randomButton, randomList,
-      makeEl("h3", "unusual-heading", `All ${total} one-time rivalries`), search, count, fullList, more
+      makeEl("h3", "unusual-heading", `All ${total} one-time rivalries`), search, count, fullList, moreLess
     );
     loadRandom();
     loadFullList();
