@@ -85,6 +85,11 @@ for row in _read_csv("shootouts.csv"):
 with open(DATA_DIR / "flag_codes.json", encoding="utf-8") as f:
     FLAG_CODES = json.load(f)
 
+# Flags flagcdn.com doesn't have (countries that no longer exist). These are
+# image files kept in docs/flags/: {"Yugoslavia": "flags/yugoslavia.svg", ...}
+with open(DATA_DIR / "flag_files.json", encoding="utf-8") as f:
+    FLAG_FILES = json.load(f)
+
 # Each team's colors, main color first: {"Brazil": ["#009c3b", "#ffdf00", ...]}.
 # Teams that are not in the file get an empty list (the app uses default colors).
 with open(DATA_DIR / "team_colors.json", encoding="utf-8") as f:
@@ -126,7 +131,8 @@ def team_info(name):
     """What the frontend needs to draw a team: name, flag code and colors."""
     return {
         "name": name,
-        "code": FLAG_CODES.get(name),         # None when we have no flag
+        "code": FLAG_CODES.get(name),         # flagcdn.com country code, or None
+        "flag_file": FLAG_FILES.get(name),    # our own flag image instead, or None
         "colors": TEAM_COLORS.get(name, []),  # main color first
     }
 
