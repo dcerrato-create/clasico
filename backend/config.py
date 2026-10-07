@@ -33,6 +33,26 @@ MAX_TOURNAMENT_CHIPS = 8
 MAX_RECENT_MATCHES = 30
 
 # ---------------------------------------------------------------------------
+# UNUSUAL GAMES (the lists at the bottom of the home screen)
+# ---------------------------------------------------------------------------
+UNUSUAL_LIST_SIZE = 10   # entries in each list (the first 3 go on the podium)
+CHAOS_MAX_MARGIN = 3     # a "chaos game" is high-scoring but decided by this many goals or fewer
+
+# "Ghost countries": teams in the dataset whose country no longer exists.
+# Names must match the dataset. (The Soviet Union and Serbia and Montenegro
+# are not here because the dataset files their matches under Russia and Serbia.)
+GHOST_COUNTRIES = [
+    "Czechoslovakia",
+    "Yugoslavia",
+    "German DR",         # East Germany
+    "Vietnam Republic",  # South Vietnam
+    "North Vietnam",
+    "Yemen DPR",         # South Yemen
+    "Saarland",
+    "Manchukuo",
+]
+
+# ---------------------------------------------------------------------------
 # EXTRA SEARCH NAMES
 # Nicknames people might type that are not in the dataset.
 # ---------------------------------------------------------------------------

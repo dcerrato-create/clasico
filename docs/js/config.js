@@ -96,4 +96,40 @@ const RECENT = {
   defaultTeam: "",  // a team to show when the page opens, e.g. "Honduras" ("" = none)
 };
 
+// "Unusual Games", the last section of the home screen.
+const UNUSUAL = {
+  // The lists, in the order of their chips. Remove a line to hide one.
+  order: ["one_time", "beatdowns", "waits", "chaos", "most_played", "oldest", "ghosts"],
+
+  labels: {
+    one_time: "One-Time Rivalries",
+    beatdowns: "Biggest Beatdowns",
+    waits: "Longest Wait Rivalry",
+    chaos: "Chaos Games",
+    most_played: "Most-Played Rivalries",
+    oldest: "Where It All Began",
+    ghosts: "Ghost Countries",
+  },
+
+  // The line of explanation shown under the chips.
+  descriptions: {
+    one_time: "Pairs of teams that have met exactly once in history.",
+    beatdowns: "The most one-sided results ever recorded.",
+    waits: "The longest gaps between two meetings of the same teams.",
+    chaos: "The most goals in a match that still finished close (decided by 3 goals or fewer).",
+    most_played: "The rivalries with the most matches played.",
+    oldest: "The oldest rivalries in international football, by the date of their first meeting.",
+    ghosts: "National teams of countries that no longer exist, with the last match each one played.",
+  },
+
+  // Podium colors for ranks 1, 2 and 3.
+  gold: "#f2c14e",
+  silver: "#c7d0dc",
+  bronze: "#cd8a4b",
+
+  randomCount: 5,    // how many one-time rivalries the random button shows
+  listPageSize: 30,  // rows of the full one-time list shown at a time
+  stagger: 90,       // milliseconds between one card appearing and the next
+};
+
 /* ========================== end of CONFIG ================================ */

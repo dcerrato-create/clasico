@@ -582,6 +582,120 @@ button:disabled { cursor: not-allowed; opacity: 0.6; }
   .recent-go { display: block; }
 }
 
+/* ---------- Unusual Games ---------- */
+
+.unusual-intro { margin: 14px 0 16px; color: var(--muted); }
+.unusual-heading {
+  margin: 20px 0 10px;
+  font-family: var(--font-display);
+  font-size: 1.45rem;
+  font-weight: 400;
+  letter-spacing: 0.05em;
+  line-height: 1.1;
+}
+.unusual-heading:first-child { margin-top: 0; }
+
+/* One entry: podium cards and rows share these rules. Each is a button
+   that opens the rivalry. */
+.unusual-entry {
+  position: relative;
+  display: grid;
+  align-items: center;
+  width: 100%;
+  background: rgba(0, 0, 0, 0.55);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text);
+  text-align: left;
+  animation: stat-in 0.45s cubic-bezier(0.2, 1.2, 0.4, 1) both; /* rise in one by one */
+  transition: transform 0.15s ease, border-color 0.15s ease;
+}
+.unusual-entry:hover { transform: translateY(-3px); border-color: var(--text); }
+
+.unusual-flags { display: flex; gap: 6px; }
+.unusual-flags .flag { width: 34px; }
+.unusual-value { color: var(--muted); font-size: 0.85rem; white-space: nowrap; }
+.unusual-value strong { font-family: var(--font-impact); font-weight: 400; color: var(--text); }
+.unusual-info { display: grid; gap: 2px; min-width: 0; }
+.unusual-title { font-weight: 700; line-height: 1.25; overflow-wrap: anywhere; }
+.unusual-detail { color: var(--muted); font-size: 0.82rem; }
+
+/* --- The podium: ranks 1 to 3, in gold, silver and bronze --- */
+.podium { display: grid; gap: 14px; margin-top: 6px; }
+.podium-card {
+  grid-template-columns: auto 1fr;
+  gap: 6px 14px;
+  padding: 16px 14px 14px;
+  border-top: 4px solid var(--medal);
+  box-shadow: 0 0 26px color-mix(in srgb, var(--medal) 28%, transparent);
+}
+.podium-card .unusual-flags { grid-row: 1; grid-column: 1; align-self: start; padding-top: 4px; }
+.podium-card .unusual-flags .flag { width: 44px; }
+.podium-card .unusual-value { grid-row: 1; grid-column: 2; font-size: 0.95rem; }
+.podium-card .unusual-value strong { font-size: 2.6rem; line-height: 1; margin-right: 2px; }
+.podium-card .unusual-info { grid-column: 1 / -1; }
+.podium-card .unusual-title { font-size: 1.1rem; }
+/* the medal with the rank number */
+.podium-card .unusual-rank {
+  position: absolute;
+  top: -14px;
+  left: -8px;
+  z-index: 1;
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  background: var(--medal);
+  color: #000;
+  border-radius: 50%;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.6);
+  font-family: var(--font-impact);
+  font-size: 1.1rem;
+}
+
+/* --- Ranks 4 and below, and the one-time rivalries: rows --- */
+.unusual-list { display: grid; gap: 6px; margin-top: 12px; }
+.unusual-list:empty { margin-top: 0; }
+.unusual-entry.list-row {
+  grid-template-columns: 26px auto 1fr;
+  gap: 4px 12px;
+  padding: 9px 12px;
+}
+.list-row .unusual-rank { font-family: var(--font-impact); font-size: 1.1rem; color: var(--muted); text-align: center; }
+.list-row .unusual-flags .flag { width: 28px; }
+.list-row .unusual-value { grid-column: 3; grid-row: 2; } /* on a phone: under the title */
+.list-row .unusual-value strong { font-size: 1.3rem; }
+.list-row .unusual-info { grid-column: 3; grid-row: 1; }
+.unusual-entry.match-row { grid-template-columns: auto 1fr; } /* no rank and no big number */
+.match-row .unusual-info { grid-column: 2; }
+
+.unusual-random { margin: 2px 0 4px 6px; font-size: 1.2rem; min-height: 46px; padding: 8px 24px; }
+.unusual-search {
+  width: 100%;
+  max-width: 460px;
+  min-height: 48px;
+  padding: 10px 14px;
+  font: inherit;
+  font-size: 1.05rem;
+  color: var(--text);
+  background: rgba(0, 0, 0, 0.55);
+  border: 1px solid var(--border);
+  border-bottom: 2px solid var(--text);
+  border-radius: 4px;
+}
+.unusual-search:focus { outline: none; border-color: var(--text); box-shadow: 0 0 0 3px rgba(90, 140, 255, 0.45); }
+.unusual-count { margin: 10px 0 0; color: var(--muted); font-size: 0.85rem; }
+.unusual-more { display: block; margin: 12px auto 0; }
+
+@media (min-width: 700px) {
+  /* side by side, like a real podium */
+  .podium { grid-template-columns: repeat(3, 1fr); gap: 16px; margin-top: 14px; }
+  .unusual-entry.list-row { grid-template-columns: 30px auto 1fr auto; padding: 10px 16px; gap: 14px; }
+  .list-row .unusual-value { grid-column: 4; grid-row: 1; text-align: right; }
+  .list-row .unusual-value strong { font-size: 1.5rem; }
+  .unusual-entry.match-row { grid-template-columns: auto 1fr; }
+}
+
 /* ---------- 2. Cinematic clash (full-screen, built by js/clash.js) ---------- */
 
 .clash-overlay {
@@ -1707,6 +1821,6 @@ button:disabled { cursor: not-allowed; opacity: 0.6; }
   .step, .side-name, .stage-vs, .primary, .featured-card { transition: none; }
   .stage.quick, .stage.quick .side, .stage.quick .stage-vs, .stage.quick .clasico-name { animation: none; }
   .era-bar, .era-num, .era-draw-num { transition: none; }
-  .stat-card, .record-bar.grow, .recent-row { animation: none; }
+  .stat-card, .record-bar.grow, .recent-row, .unusual-entry { animation: none; }
   .story-cursor { animation: none; }
 }

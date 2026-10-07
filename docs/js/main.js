@@ -25,6 +25,7 @@ const dom = {
 let pickerA;
 let pickerB;
 let recentSection; // "Recent Games per Country" (so the Home button can clear it)
+let unusualSection; // "Unusual Games" (same reason)
 
 // Copy the COLORS from config.js into CSS variables, so the stylesheet
 // and the chart both use the same colors.
@@ -146,6 +147,7 @@ function resetHome() {
   dom.goButton.textContent = "Show the rivalry";
   // Recent Games per Country
   if (recentSection) recentSection.reset();
+  if (unusualSection) unusualSection.reset();
 
   // The address bar (removes ?a=...&b=...)
   try {
@@ -199,6 +201,9 @@ async function init() {
 
   // "Recent Games per Country": clicking one of a team's games opens that rivalry.
   recentSection = createRecentSection(state.teams, pickRivalry);
+
+  // "Unusual Games": every entry opens a rivalry too.
+  unusualSection = createUnusualSection(state.teams, pickRivalry);
 
   // The Home button, and the CLÁSICO logo, both go back to the start.
   document.getElementById("home-button").addEventListener("click", resetHome);

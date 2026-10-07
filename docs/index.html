@@ -9,7 +9,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Anton&family=Bebas+Neue&family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css?v=12">
+  <link rel="stylesheet" href="style.css?v=14">
 </head>
 <body>
   <!-- Always on screen: goes back to the start and clears everything (see resetHome in js/main.js) -->
@@ -95,6 +95,16 @@
         <div id="recent-results" aria-live="polite"></div>
       </div>
     </section>
+
+    <!-- Unusual Games: oddities from the whole dataset (js/unusual.js) -->
+    <section id="unusual-section" aria-labelledby="unusual-heading">
+      <h2 id="unusual-heading" class="section-heading">Unusual Games</h2>
+      <div class="card unusual-card">
+        <div class="chips" id="unusual-chips" role="group" aria-label="Choose a list"></div>
+        <p class="unusual-intro" id="unusual-intro"></p>
+        <div id="unusual-body" aria-live="polite"></div>
+      </div>
+    </section>
   </main>
 
   <footer class="site-footer">
@@ -121,6 +131,7 @@
   <script src="js/stats.js"></script>
   <script src="js/timeline.js"></script>
   <script src="js/recent.js"></script>
+  <script src="js/unusual.js"></script>
   <script src="js/main.js"></script>
 </body>
 </html>

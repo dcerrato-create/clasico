@@ -21,6 +21,7 @@ load_dotenv(Path(__file__).parent.parent / ".env")
 
 import data  # noqa: E402  (imported after load_dotenv on purpose)
 import story  # noqa: E402
+import unusual  # noqa: E402
 from config import MAX_RECENT_MATCHES  # noqa: E402
 from errors import ApiError  # noqa: E402
 
@@ -132,6 +133,33 @@ def recent():
         raise ApiError(f"\"limit\" must be between 1 and {MAX_RECENT_MATCHES}.", 400)
 
     return jsonify({"team": data.team_info(team), "matches": data.recent_matches(team, limit)})
+
+
+@app.get("/api/unusual")
+def unusual_lists():
+    """The top lists of the "Unusual Games" section: biggest beatdowns,
+    longest waits, chaos games, most-played rivalries, oldest rivalries and
+    ghost countries. Also says how many one-time rivalries exist."""
+    return jsonify(unusual.lists())
+
+
+@app.get("/api/one-time")
+def one_time_rivalries():
+    """Rivalries that happened exactly once.
+
+    /api/one-time?random=5  -> 5 picked at random
+    /api/one-time           -> all of them, newest first
+    """
+    count_text = request.args.get("random")
+    if count_text is None:
+        return jsonify(unusual.one_time())
+    try:
+        count = int(count_text)
+    except ValueError:
+        raise ApiError("\"random\" must be a number, like 5.", 400)
+    if not 1 <= count <= 50:
+        raise ApiError("\"random\" must be between 1 and 50.", 400)
+    return jsonify(unusual.one_time(random_count=count))
 
 
 def get_filtered_matches():
