@@ -355,9 +355,7 @@ These are my important prompts, word for word and in order (typos included). Sho
 
 > Confirm the dataset auto-update will work on Render's free tier: files don't persist between restarts, the service sleeps when idle, and gunicorn may run multiple workers. Make sure it falls back to the bundled CSVs if the download fails or the format changes, never blocks or slows the first request after waking, and only one process runs the update. Explain how it works and how often it checks.
 
-### My own edit (7 October)
-
-I changed the Honduras color to deep blue myself, in `backend/data/team_colors.json`, and committed it ("Changes Honduran Flag Color to Deep Blue"). The rest of the code was written by Claude Code from the prompts in this log, and I reviewed and tested each part in the browser before moving on.
+### Day 4 (7): audit, final fixes, launch
 
 **Prompt 36** (2026-10-07 02:11 EDT)
 
@@ -371,7 +369,6 @@ I changed the Honduras color to deep blue myself, in `backend/data/team_colors.j
 >
 > go
 
-### Day 4 (7 and 8 October): audit, final fixes, launch
 
 **Prompt 38** (2026-10-07 22:10 EDT)
 
