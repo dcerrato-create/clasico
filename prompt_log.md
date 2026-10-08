@@ -4,6 +4,8 @@
 
 VS Code with Claude Code was used throughout the project. The main model I used was Opus 5.5 on High intensity, for planning each feature, writing the code and testing it. At the end, when I was auditing my code, fixing bugs and checking that the whole website worked, I used Opus 5.5 on Extra High intensity, because that work needed the most careful reasoning. Finally, when it was time to push and make the very last tweaks, I brought it down to Opus 5.5 on Medium intensity, since those were small, well-defined steps.
 
+I also used two other AI tools. I used Claude chat for brainstorming, planning, writing a small number of prompts (few, but very important ones), and checking the rubric to confirm that my project fulfills it. And I used OpenAI GPT 5.4 for the AI Story inside my project: it is the model that writes each rivalry's story.
+
 ## One place AI got it wrong
 
 In about two instances I had trouble with the AI. The main one was when I proposed a Top Scorers section but first asked if we could realistically make it work. It said the dataset had enough information and that we could get enough pictures from Wikipedia to make it work. It turned out that for every rivalry almost more than half of the data was missing, so I decided to scrap the section altogether and replace it with a More Statistics section that only uses data we have for every match (Prompts 16 to 18 below). Another, smaller issue was with the flag animation: Claude Code had trouble understanding when I wanted the name of the clásico to appear and the overall cinematic animation. But a couple of prompts later it finally got it (Prompts 12 to 14).
@@ -356,6 +358,10 @@ These are my important prompts, word for word and in order (typos included). Sho
 > Confirm the dataset auto-update will work on Render's free tier: files don't persist between restarts, the service sleeps when idle, and gunicorn may run multiple workers. Make sure it falls back to the bundled CSVs if the download fails or the format changes, never blocks or slows the first request after waking, and only one process runs the update. Explain how it works and how often it checks.
 
 ### Day 4 (7): audit, final fixes, launch
+
+#### My own edits
+
+I made two changes to the code myself. I edited the featured rivalries section in `docs/js/config.js`, and I changed the Honduras color to deep blue in `backend/data/team_colors.json` and committed it ("Changes Honduran Flag Color to Deep Blue"). The rest of the code was written by Claude Code from the prompts in this log, and I reviewed and tested each part in the browser before moving on.
 
 **Prompt 36** (2026-10-07 02:11 EDT)
 
