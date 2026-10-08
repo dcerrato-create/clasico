@@ -22,7 +22,7 @@ from config import WIKI_ARTICLE_MAX_CHARS, WIKI_TIMEOUT_SECONDS
 
 WIKI_API = "https://en.wikipedia.org/w/api.php"
 # Wikipedia asks every program to say who it is.
-USER_AGENT = "ClasicoApp/1.0 (student project for CMU 15-113; github.com/dcerrato-create)"
+USER_AGENT = "ClasicoApp/1.0 (https://github.com/dcerrato-create/clasico; student project for CMU 15-113)"
 
 CACHE_FILE = Path(__file__).parent / "cache" / "wiki.json"
 _lock = threading.Lock()
@@ -84,7 +84,8 @@ def find_rivalry_article(team_a, team_b):
                 "text": text[:WIKI_ARTICLE_MAX_CHARS],
             } if text else None
     except (httpx.HTTPError, ValueError, KeyError) as err:
-        last_error = f"{type(err).__name__}: {str(err)[:160]}"
+        reply = getattr(getattr(err, "response", None), "text", "")  # what Wikipedia said, if it answered
+        last_error = f"{type(err).__name__}: {str(err)[:80]} {reply[:300]}".strip()
         print("Wikipedia lookup failed:", last_error, flush=True)
         return None  # not saved, so we try again next time
     last_error = None
