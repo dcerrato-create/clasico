@@ -1,5 +1,5 @@
 // Where the backend lives. Change this one line when the backend is deployed.
-const BACKEND_URL = "http://127.0.0.1:5001";
+const BACKEND_URL = "https://clasico-cr7i.onrender.com";
 
 /* ==========================================================================
    CONFIG - things you may want to edit yourself
