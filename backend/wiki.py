@@ -37,6 +37,7 @@ def _load_cache():
 
 
 _cache = _load_cache()  # {"Argentina|Brazil": {"title", "url", "text"} or None}
+last_error = None       # why the latest lookup failed, if it did (shown by /api/health)
 
 
 def _ask(params):
@@ -53,6 +54,7 @@ def _ask(params):
 def find_rivalry_article(team_a, team_b):
     """Return {"title", "url", "text"} for the rivalry's Wikipedia article,
     or None if there isn't one (or Wikipedia can't be reached). Never raises."""
+    global last_error
     first, second = sorted([team_a, team_b])
     key = f"{first}|{second}"
     with _lock:
@@ -81,12 +83,18 @@ def find_rivalry_article(team_a, team_b):
                 "url": "https://en.wikipedia.org/wiki/" + title.replace(" ", "_"),
                 "text": text[:WIKI_ARTICLE_MAX_CHARS],
             } if text else None
-    except (httpx.HTTPError, ValueError, KeyError):
+    except (httpx.HTTPError, ValueError, KeyError) as err:
+        last_error = f"{type(err).__name__}: {str(err)[:160]}"
+        print("Wikipedia lookup failed:", last_error, flush=True)
         return None  # not saved, so we try again next time
+    last_error = None
 
     with _lock:
         _cache[key] = article
-        CACHE_FILE.parent.mkdir(exist_ok=True)
-        with open(CACHE_FILE, "w", encoding="utf-8") as f:
-            json.dump(_cache, f, ensure_ascii=False, indent=1)
+        try:
+            CACHE_FILE.parent.mkdir(exist_ok=True)
+            with open(CACHE_FILE, "w", encoding="utf-8") as f:
+                json.dump(_cache, f, ensure_ascii=False, indent=1)
+        except OSError:
+            pass  # can't save to disk: it is still remembered while the server runs
     return article

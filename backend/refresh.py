@@ -209,17 +209,21 @@ def _background_loop():
     time.sleep(DATA_FIRST_CHECK_DELAY_SECONDS)
     next_download_check = 0
     while True:
-        # Start from the newest copy already saved on disk, if there is one.
-        load_saved_copy()
-        if _try_to_become_downloader():
-            status["role"] = "downloader"
-            if time.time() >= next_download_check:
-                print(f"Dataset check (process {os.getpid()}):", check_for_update(), flush=True)
-                next_download_check = time.time() + DATA_REFRESH_HOURS * 3600
-        else:
-            # Another worker downloads. We just load what it saves.
-            status["role"] = "follower"
-            status["result"] = f"another worker downloads; this one has data up to {data.latest_match_date()}"
+        try:
+            # Start from the newest copy already saved on disk, if there is one.
+            load_saved_copy()
+            if _try_to_become_downloader():
+                status["role"] = "downloader"
+                if time.time() >= next_download_check:
+                    print(f"Dataset check (process {os.getpid()}):", check_for_update(), flush=True)
+                    next_download_check = time.time() + DATA_REFRESH_HOURS * 3600
+            else:
+                # Another worker downloads. We just load what it saves.
+                status["role"] = "follower"
+                status["result"] = f"another worker downloads; this one has data up to {data.latest_match_date()}"
+        except Exception as err:  # e.g. the cache folder can't be written: say so and keep trying
+            status["result"] = f"the update check could not run ({type(err).__name__}: {str(err)[:120]}); keeping the data we have"
+            print("Dataset check:", status["result"], flush=True)
         time.sleep(DATA_SHARE_CHECK_SECONDS)
 
 

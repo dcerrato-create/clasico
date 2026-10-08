@@ -23,6 +23,7 @@ import data  # noqa: E402  (imported after load_dotenv on purpose)
 import refresh  # noqa: E402
 import story  # noqa: E402
 import unusual  # noqa: E402
+import wiki  # noqa: E402
 from config import MAX_RECENT_MATCHES  # noqa: E402
 from errors import ApiError  # noqa: E402
 
@@ -118,6 +119,7 @@ def health():
         "data_last_updated": refresh.status["last_updated"],
         "data_check_result": refresh.status["result"],
         "data_role": refresh.status["role"],
+        "wikipedia_last_error": wiki.last_error,
     })
 
 
