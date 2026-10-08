@@ -27,11 +27,21 @@ import wiki  # noqa: E402
 from config import MAX_RECENT_MATCHES  # noqa: E402
 from errors import ApiError  # noqa: E402
 
-# Keep the dataset up to date in the background (see refresh.py). This
-# returns straight away; the server starts with the copy that ships with the app.
-refresh.start()
-
 app = Flask(__name__)
+
+
+@app.before_request
+def keep_data_fresh():
+    """Keep the dataset up to date in the background (see refresh.py).
+
+    The background thread is started by the first request, not when this
+    file is loaded: a host may load the app in one process and then serve
+    requests from a copy of it, and a thread does not survive that copy.
+    After the first time this does nothing.
+    """
+    refresh.start()
+
+
 app.json.ensure_ascii = False  # keep "Copa América" readable in responses
 
 # CORS lets the frontend (a different address) call this backend.

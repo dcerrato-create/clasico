@@ -63,6 +63,8 @@ REQUIRED_COLUMNS = {
 _lock = threading.Lock()  # only one check at a time inside this process
 _lock_handle = None       # kept open for as long as this process is the downloader
 _loaded_stamp = None      # which saved copy this process has in memory
+_started_in = None        # the process whose background thread is running
+_start_lock = threading.Lock()
 status = {"last_checked": None, "last_updated": None, "result": "not checked yet", "role": "starting"}
 
 
@@ -228,6 +230,13 @@ def _background_loop():
 
 
 def start():
-    """Called once when the server starts. Returns immediately: everything
-    else happens in a background thread."""
+    """Start the background thread, once per process. Returns immediately;
+    calling it again in the same process does nothing."""
+    global _started_in
+    if _started_in == os.getpid():  # the usual case: nothing to do, and no waiting
+        return
+    with _start_lock:
+        if _started_in == os.getpid():
+            return
+        _started_in = os.getpid()
     threading.Thread(target=_background_loop, daemon=True).start()
