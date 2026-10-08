@@ -208,17 +208,17 @@ def start_story(team_a, team_b, matches, lang, visitor):
         _check_rate_limit(visitor)
         _in_progress.add(key)
 
-    facts = json.dumps(build_facts(team_a, team_b, matches), ensure_ascii=False)
-
-    # The rivalry's Wikipedia article, if it has one (None if not, or if
-    # Wikipedia can't be reached: the story is then written without it).
-    article = wiki.find_rivalry_article(team_a, team_b)
-    source = {"title": article["title"], "url": article["url"]} if article else None
-    wikipedia = f'"{article["title"]}"\n{article["text"]}' if article else "none"
-
-    # One line in the server log for every call that costs money.
-    print(f"OpenAI call: new {STORY_LANGUAGES[lang]} story for {team_a} v {team_b} ({model})", flush=True)
     try:
+        facts = json.dumps(build_facts(team_a, team_b, matches), ensure_ascii=False)
+
+        # The rivalry's Wikipedia article, if it has one (None if not, or if
+        # Wikipedia can't be reached: the story is then written without it).
+        article = wiki.find_rivalry_article(team_a, team_b)
+        source = {"title": article["title"], "url": article["url"]} if article else None
+        wikipedia = f'"{article["title"]}"\n{article["text"]}' if article else "none"
+
+        # One line in the server log for every call that costs money.
+        print(f"OpenAI call: new {STORY_LANGUAGES[lang]} story for {team_a} v {team_b} ({model})", flush=True)
         # max_retries=0: exactly one call, never an automatic second try.
         client = openai.OpenAI(api_key=api_key, timeout=STORY_TIMEOUT_SECONDS, max_retries=0)
         stream = client.chat.completions.create(
@@ -230,10 +230,13 @@ def start_story(team_a, team_b, matches, lang, visitor):
             max_completion_tokens=STORY_MAX_TOKENS,
             stream=True,
         )
-    except openai.OpenAIError as err:
+    except Exception as err:
+        # Whatever went wrong, the story is no longer "being written".
         with _lock:
             _in_progress.discard(key)
-        raise _friendly_error(err, model)
+        if isinstance(err, openai.OpenAIError):
+            raise _friendly_error(err, model)
+        raise
 
     def pieces():
         written = []
