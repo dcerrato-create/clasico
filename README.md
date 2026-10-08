@@ -30,6 +30,9 @@ See [prompt_log.md](prompt_log.md) for the full details.
 
 ## Citations
 - Match data: github.com/martj42/international_results
-- Flags: flagcdn.com
+- Flags: flagcdn.com; the Honduras flag and the flags of former countries are from Wikimedia Commons (public domain)
 - Rivalry history for the AI Story: Wikipedia
+- AI Story: OpenAI API
+- Match Timeline chart: Chart.js
+- Fonts: Google Fonts (Anton, Bebas Neue, Inter)
 - Hosting: Render (backend) and GitHub Pages (frontend)
