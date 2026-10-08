@@ -1,5 +1,8 @@
-// Where the backend lives. Change this one line when the backend is deployed.
-const BACKEND_URL = "https://clasico-cr7i.onrender.com";
+// Where the backend lives. When the page is opened on your own computer
+// (start.command) it uses the backend running there; anywhere else it uses
+// the deployed backend on Render.
+const RUNNING_LOCALLY = ["127.0.0.1", "localhost", ""].includes(location.hostname);
+const BACKEND_URL = RUNNING_LOCALLY ? "http://127.0.0.1:5001" : "https://clasico-cr7i.onrender.com";
 
 /* ==========================================================================
    CONFIG - things you may want to edit yourself
