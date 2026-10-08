@@ -17,11 +17,6 @@ function streakDates(streak) {
     : `${formatDate(streak.start)} – ${formatDate(streak.end)}`;
 }
 
-// "Honduras 5-0 El Salvador" -> "Honduras 5–0 El Salvador" (nicer dash in the score)
-function niceScore(score) {
-  return score.replace(/(\d+)-(\d+)/, "$1–$2");
-}
-
 // A percentage that shows the count behind it when hovered or tapped,
 // for example "49%" -> "39 of 80". When there is nothing to divide by the
 // backend sends null, and we show a dash instead of a broken number.
@@ -41,12 +36,9 @@ function createStatsTab(panel, data, teamColors) {
   const teamB = data.team_b.name;
   const colors = { a: teamColors.a, b: teamColors.b, draw: STATS.drawColor };
 
-  const answers = new Map(); // tournament id -> backend answer, so we ask once
-  let requestId = 0;         // lets us ignore answers that arrive too late
-
   const title = makeEl("h3", "era-title", "More Statistics");
   const subtitle = makeEl("p", "era-subtitle");
-  const body = makeEl("div", "stats-body");
+  const body = makeEl("div");
   panel.append(title, subtitle, body);
 
   // ---------------------------------------------------------------------
@@ -72,7 +64,7 @@ function createStatsTab(panel, data, teamColors) {
       return card;
     }
     card.append(
-      makeEl("p", "stat-value", niceScore(match.score)),
+      makeEl("p", "stat-value", match.score),
       makeEl("p", "stat-note", `${formatDate(match.date)} · ${match.tournament} · ${match.city}`)
     );
     return card;
@@ -95,16 +87,8 @@ function createStatsTab(panel, data, teamColors) {
   // The three-part bar: Team A, draws, Team B, sized by their counts.
   // With grow = true it sweeps in from the left when the card appears.
   function makeBar(record, grow) {
-    const bar = makeEl("div", `record-bar venue-bar${grow ? " grow" : ""}`);
-    bar.setAttribute("aria-hidden", "true");
+    const bar = makeRecordBar(record, grow ? "venue-bar grow" : "venue-bar", colors.draw);
     bar.style.animationDuration = `${STATS.barGrowTime}ms`;
-    for (const [kind, count] of [["a", record.a_wins], ["d", record.draws], ["b", record.b_wins]]) {
-      if (count === 0) continue;
-      const segment = makeEl("span", `segment ${kind}`);
-      segment.style.flexGrow = count;
-      if (kind === "d") segment.style.background = colors.draw;
-      bar.append(segment);
-    }
     return bar;
   }
 
@@ -214,7 +198,7 @@ function createStatsTab(panel, data, teamColors) {
       common.classList.add("wide");
       const score = book.most_common_score;
       const value = makeEl("p", "stat-value");
-      value.append(makeEl("strong", "stat-number", niceScore(score.score)),
+      value.append(makeEl("strong", "stat-number", score.score),
         ` happened ${score.times === 1 ? "once" : `${score.times} times`}`);
       common.append(value, makeEl("p", "stat-note", `Counted for either team. Most recently on ${formatDate(score.last_date)}.`));
       grid.append(common);
@@ -267,11 +251,10 @@ function createStatsTab(panel, data, teamColors) {
       const list = makeEl("div", "shootout-list");
       for (const shootout of s.list) {
         const row = makeEl("p", "shootout-row");
-        const dot = makeEl("span", "dot");
-        dot.style.background = shootout.winner === teamA ? colors.a : shootout.winner === teamB ? colors.b : colors.draw;
-        row.append(dot,
+        const color = shootout.winner === teamA ? colors.a : shootout.winner === teamB ? colors.b : colors.draw;
+        row.append(makeDot(color),
           makeEl("strong", "", `${shootout.winner} won`),
-          ` · ${formatDate(shootout.date)} · ${shootout.tournament} · after ${niceScore(shootout.score)}`);
+          ` · ${formatDate(shootout.date)} · ${shootout.tournament} · after ${shootout.score}`);
         list.append(row);
       }
       return [grid, list, makeEl("p", "stat-section-note after", STATS.shootoutNote)];
@@ -310,31 +293,12 @@ function createStatsTab(panel, data, teamColors) {
   }
 
   // Ask the backend for the statistics (once per tournament) and draw them.
-  async function show(tournamentId, tournamentLabel) {
-    const thisRequest = ++requestId;
-    subtitle.textContent = tournamentId === "all"
-      ? `All matches between ${teamA} and ${teamB}`
-      : `${tournamentLabel} only`;
-
-    try {
-      if (!answers.has(tournamentId)) {
-        body.replaceChildren(makeEl("p", "era-status", "Loading the statistics…"));
-        const answer = await apiGet("/api/stats", { team_a: teamA, team_b: teamB, tournament: tournamentId });
-        answers.set(tournamentId, answer);
-      }
-      if (thisRequest !== requestId) return; // a newer request replaced this one
-      draw(answers.get(tournamentId));
-    } catch (err) {
-      if (thisRequest !== requestId) return;
-      // Error state: the reason plus a button to try again.
-      const retry = makeEl("button", "secondary", "Try again");
-      retry.type = "button";
-      retry.addEventListener("click", () => show(tournamentId, tournamentLabel));
-      const message = makeEl("p", "era-status era-error", `${err.message} `);
-      message.append(retry);
-      body.replaceChildren(message);
-    }
-  }
+  const show = makeTournamentLoader({
+    path: "/api/stats", teamA, teamB, subtitle,
+    target: body,
+    loadingText: "Loading the statistics…",
+    draw,
+  });
 
   return { show };
 }

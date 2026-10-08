@@ -66,7 +66,7 @@ function buildClashFlag(team, sideClass) {
 // Plays the clash. `targets` are the small flags in the card ({ a, b }) that
 // the big flags shrink into. `title` is the rivalry's own name, shown above
 // the flags ("" when it has none). Returns a Promise that resolves when it's over.
-async function playClash(teamA, teamB, teamColors, targets, title = "") {
+async function playClash(teamA, teamB, teamColors, targets, title) {
   if (!CLASH.enabled || reducedMotion) return;
 
   // --- Build the overlay ---
@@ -87,8 +87,7 @@ async function playClash(teamA, teamB, teamColors, targets, title = "") {
   );
   if (title) shaker.append(makeEl("div", "clash-title", title));
 
-  const sparks = document.createElement("canvas");
-  sparks.className = "clash-sparks";
+  const sparks = makeEl("canvas", "clash-sparks");
 
   overlay.append(
     makeEl("div", "clash-backdrop"), shaker, sparks,

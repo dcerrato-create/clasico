@@ -62,6 +62,18 @@ def handle_unexpected_error(err):
     return jsonify({"error": "Something went wrong on the server. Please try again."}), 500
 
 
+# ---------------------------------------------------------------------------
+# Reading what the page sent, with a readable error when something is wrong
+# ---------------------------------------------------------------------------
+
+def get_team(text):
+    """Return the official name of the team the visitor typed."""
+    team = data.resolve_team(text)
+    if team is None:
+        raise ApiError(f"We couldn't find a team called \"{text}\".", 404)
+    return team
+
+
 def get_team_pair(team_a_text, team_b_text):
     """Check the two team names and return their official names."""
     team_a_text = (team_a_text or "").strip()
@@ -69,15 +81,26 @@ def get_team_pair(team_a_text, team_b_text):
     if not team_a_text or not team_b_text:
         raise ApiError("Please pick two teams.", 400)
 
-    team_a = data.resolve_team(team_a_text)
-    team_b = data.resolve_team(team_b_text)
-    if team_a is None:
-        raise ApiError(f"We couldn't find a team called \"{team_a_text}\".", 404)
-    if team_b is None:
-        raise ApiError(f"We couldn't find a team called \"{team_b_text}\".", 404)
+    team_a, team_b = get_team(team_a_text), get_team(team_b_text)
     if team_a == team_b:
         raise ApiError("Pick two different teams. A team can't play itself.", 400)
     return team_a, team_b
+
+
+def get_number(name, default, highest, example):
+    """Read a whole number between 1 and `highest` from the address
+    (for example ?limit=8). `default` is used when it is left out, and
+    `example` goes in the error message."""
+    text = request.args.get(name)
+    if text is None:
+        return default
+    try:
+        number = int(text)
+    except ValueError:
+        raise ApiError(f"\"{name}\" must be a number, like {example}.", 400)
+    if not 1 <= number <= highest:
+        raise ApiError(f"\"{name}\" must be between 1 and {highest}.", 400)
+    return number
 
 
 # ---------------------------------------------------------------------------
@@ -102,7 +125,7 @@ def health():
 def teams():
     """All teams for the picker, plus how recent our match data is."""
     return jsonify({
-        "teams": data.list_teams(),
+        "teams": data.TEAM_LIST,
         "data": {"matches": len(data.MATCHES), "latest_match": data.latest_match_date()},
     })
 
@@ -137,17 +160,8 @@ def recent():
     team_text = (request.args.get("team") or "").strip()
     if not team_text:
         raise ApiError("Please pick a team.", 400)
-    team = data.resolve_team(team_text)
-    if team is None:
-        raise ApiError(f"We couldn't find a team called \"{team_text}\".", 404)
-
-    try:
-        limit = int(request.args.get("limit", 8))
-    except ValueError:
-        raise ApiError("\"limit\" must be a number, like 8.", 400)
-    if not 1 <= limit <= MAX_RECENT_MATCHES:
-        raise ApiError(f"\"limit\" must be between 1 and {MAX_RECENT_MATCHES}.", 400)
-
+    team = get_team(team_text)
+    limit = get_number("limit", default=8, highest=MAX_RECENT_MATCHES, example=8)
     return jsonify({"team": data.team_info(team), "matches": data.recent_matches(team, limit)})
 
 
@@ -166,15 +180,7 @@ def one_time_rivalries():
     /api/one-time?random=5  -> 5 picked at random
     /api/one-time           -> all of them, newest first
     """
-    count_text = request.args.get("random")
-    if count_text is None:
-        return jsonify(unusual.one_time())
-    try:
-        count = int(count_text)
-    except ValueError:
-        raise ApiError("\"random\" must be a number, like 5.", 400)
-    if not 1 <= count <= 50:
-        raise ApiError("\"random\" must be between 1 and 50.", 400)
+    count = get_number("random", default=None, highest=50, example=5)
     return jsonify(unusual.one_time(random_count=count))
 
 
@@ -209,13 +215,7 @@ def eras():
     Example: /api/eras?team_a=Honduras&team_b=El Salvador&tournament=Gold Cup
     """
     team_a, team_b, matches, counted, tournament = get_filtered_matches()
-    return jsonify({
-        "team_a": data.team_info(team_a),
-        "team_b": data.team_info(team_b),
-        "tournament": tournament,
-        "matches": len(counted),
-        "decades": data.decade_records(counted, matches),
-    })
+    return jsonify({"decades": data.decade_records(counted, matches)})
 
 
 @app.get("/api/stats")
@@ -226,12 +226,10 @@ def stats():
     """
     team_a, team_b, matches, counted, tournament = get_filtered_matches()
     return jsonify({
-        "team_a": data.team_info(team_a),
-        "team_b": data.team_info(team_b),
         "tournament": tournament,
         "matches": len(counted),
         "overview": data.overview(counted, today=date.today()),
-        "record_book": data.record_book(team_a, team_b, counted),
+        "record_book": data.record_book(counted),
         "venues": data.venue_records(team_a, team_b, counted),
         "shootouts": data.shootout_stats(team_a, team_b, counted),
         "competitive_vs_friendly": data.competitive_vs_friendly(counted),
@@ -261,11 +259,14 @@ def ai_story():
     lang = str(body.get("lang", "en")).lower()
     story.check_language(lang)
 
-    matches = data.head_to_head(team_a, team_b)
+    # A story is always written with the teams in alphabetical order, so
+    # "Brazil vs Argentina" and "Argentina vs Brazil" share one saved story.
+    first, second = sorted([team_a, team_b])
+    matches = data.head_to_head(first, second)
     if not matches:
         raise ApiError(f"{team_a} and {team_b} have never played each other, so there is no story to tell.", 404)
 
-    cached = story.get_cached(team_a, team_b, matches, lang)
+    cached = story.get_cached(first, second, matches, lang)
     if cached is None and body.get("cached_only"):
         return jsonify({"cached": False})  # not written yet, and we were told not to write it
 
@@ -275,7 +276,7 @@ def ai_story():
     else:
         # Behind a host like Render the visitor's address arrives in this header.
         visitor = request.headers.get("X-Forwarded-For", request.remote_addr or "unknown").split(",")[0].strip()
-        model, source, pieces = story.start_story(team_a, team_b, matches, lang, visitor)  # the one OpenAI call
+        model, source, pieces = story.start_story(first, second, matches, lang, visitor)  # the one OpenAI call
 
     def line(event):
         return json.dumps(event, ensure_ascii=False) + "\n"

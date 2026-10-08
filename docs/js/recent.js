@@ -14,8 +14,7 @@ function createRecentSection(teams, onPickRivalry) {
 
   // One game, as a button that opens the rivalry with that opponent.
   function buildRow(team, match, teamColor, index) {
-    const row = makeEl("button", "recent-row");
-    row.type = "button";
+    const row = makeButton("recent-row", "", () => onPickRivalry(team.name, match.opponent.name));
     row.style.animationDelay = `${reducedMotion ? 0 : index * 60}ms`;
     row.title = `Open ${team.name} vs ${match.opponent.name}`;
 
@@ -38,7 +37,6 @@ function createRecentSection(teams, onPickRivalry) {
     const info = makeEl("span", "recent-info");
     info.append(opponent, makeEl("span", "recent-details", details));
     row.append(badge, score, info, makeEl("span", "recent-go", "See the rivalry →"));
-    row.addEventListener("click", () => onPickRivalry(team.name, match.opponent.name));
     return row;
   }
 
@@ -68,14 +66,8 @@ function createRecentSection(teams, onPickRivalry) {
     } catch (err) {
       if (thisRequest !== requestId) return;
       // Error state: the reason, plus a way to try again when the server is the problem.
-      const message = makeEl("p", "recent-status recent-error", `${err.message} `);
-      if (err.offline) {
-        const retry = makeEl("button", "secondary", "Try again");
-        retry.type = "button";
-        retry.addEventListener("click", () => show(teamName));
-        message.append(retry);
-      }
-      results.replaceChildren(message);
+      results.replaceChildren(
+        makeErrorLine("recent-status recent-error", err.message, err.offline ? () => show(teamName) : null));
     }
   }
 

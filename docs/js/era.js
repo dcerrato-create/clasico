@@ -43,8 +43,6 @@ function createEraChart(panel, data, teamColors, onPickDecade) {
     draw: ERA_CHART.drawColor,
   };
 
-  const answers = new Map(); // tournament id -> backend answer, so we ask once
-  let requestId = 0;         // lets us ignore answers that arrive too late
   let selectedDecade = null; // the decade whose record is showing below
   let lastPointer = "mouse"; // "mouse" or "touch": how the last press was made
 
@@ -55,9 +53,7 @@ function createEraChart(panel, data, teamColors, onPickDecade) {
   const legend = makeEl("div", "legend era-legend");
   for (const [key, label] of [["a", `◀ ${teamA} wins`], ["draw", "Draws"], ["b", `${teamB} wins ▶`]]) {
     const item = makeEl("span", "legend-item");
-    const dot = makeEl("span", "dot");
-    dot.style.background = colors[key];
-    item.append(dot, label);
+    item.append(makeDot(colors[key]), label);
     legend.append(item);
   }
 
@@ -77,9 +73,8 @@ function createEraChart(panel, data, teamColors, onPickDecade) {
     for (const other of rows.children) other.classList.toggle("selected", other === row);
 
     detail.className = "match-detail era-detail";
-    const button = makeEl("button", "secondary", `See the ${record.label} on the Match Timeline →`);
-    button.type = "button";
-    button.addEventListener("click", () => onPickDecade(record.decade));
+    const button = makeButton("secondary", `See the ${record.label} on the Match Timeline →`,
+      () => onPickDecade(record.decade));
     const line = buildRecordLine(record.label, record, teamA, teamB, colors);
     detail.replaceChildren(line, button);
   }
@@ -106,6 +101,7 @@ function createEraChart(panel, data, teamColors, onPickDecade) {
     // The backend sends the oldest decade first; we show the newest on top.
     [...decades].reverse().forEach((record, index) => {
       const delay = reducedMotion ? 0 : index * ERA_CHART.stagger;
+      // (its click handler is added further down, once the pop-up exists)
       const row = makeEl("button", "era-row");
       row.type = "button";
       row.setAttribute("aria-label", eraRecordText(record, teamA, teamB));
@@ -179,34 +175,16 @@ function createEraChart(panel, data, teamColors, onPickDecade) {
   }
 
   // Ask the backend for the decades (once per tournament) and draw them.
-  async function show(tournamentId, tournamentLabel) {
-    const thisRequest = ++requestId;
-    subtitle.textContent = tournamentId === "all"
-      ? `All matches between ${teamA} and ${teamB}`
-      : `${tournamentLabel} only`;
-
-    try {
-      if (!answers.has(tournamentId)) {
-        rows.replaceChildren(makeEl("p", "era-status", "Loading the decades…"));
-        const answer = await apiGet("/api/eras", { team_a: teamA, team_b: teamB, tournament: tournamentId });
-        answers.set(tournamentId, answer);
-      }
-      if (thisRequest !== requestId) return; // a newer request replaced this one
-      drawRows(answers.get(tournamentId).decades);
-    } catch (err) {
-      if (thisRequest !== requestId) return;
-      // Error state: the reason plus a button to try again.
-      const retry = makeEl("button", "secondary", "Try again");
-      retry.type = "button";
-      retry.addEventListener("click", () => show(tournamentId, tournamentLabel));
-      const message = makeEl("p", "era-status era-error", `${err.message} `);
-      message.append(retry);
-      rows.replaceChildren(message);
-      detail.hidden = true;
-      return;
-    }
-    detail.hidden = false;
-  }
+  const show = makeTournamentLoader({
+    path: "/api/eras", teamA, teamB, subtitle,
+    target: rows,
+    loadingText: "Loading the decades…",
+    draw: (answer) => {
+      drawRows(answer.decades);
+      detail.hidden = false;
+    },
+    onError: () => (detail.hidden = true), // no decade to describe
+  });
 
   return { show };
 }

@@ -20,18 +20,7 @@ function decimalYear(dateText) {
   return year + ((month - 1) * 30.4 + day) / 365;
 }
 
-// "1969-06-08" -> "8 Jun 1969"
-function formatDate(dateText) {
-  const [year, month, day] = dateText.split("-").map(Number);
-  const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-  return `${day} ${months[month - 1]} ${year}`;
-}
-
-// "Honduras 2–1 El Salvador", in the order the match was played (home first)
-function scoreLine(match) {
-  return `${match.home_team} ${match.home_score}–${match.away_score} ${match.away_team}`;
-}
-
+// "San Salvador, El Salvador", with a note when neither team was at home
 function placeLine(match) {
   const place = match.city === match.country ? match.city : `${match.city}, ${match.country}`;
   return match.neutral ? `${place} (neutral venue)` : place;
@@ -52,12 +41,10 @@ function scorersText(match, team) {
   return [...byPlayer].map(([name, notes]) => `${name} ${notes.filter(Boolean).join(", ")}`.trim());
 }
 
-// Fills the panel under the chart with everything about one match.
 // A small colored dot for one match. A match that went to penalties gets a
 // ring in the color of the team that won the shootout (ringColor).
 function makeMatchDot(match, colors, ringColor) {
-  const dot = makeEl("span", "dot");
-  dot.style.background = colors[match.winner];
+  const dot = makeDot(colors[match.winner]);
   if (ringColor) {
     dot.classList.add("pens");
     dot.style.borderColor = ringColor;
@@ -65,6 +52,7 @@ function makeMatchDot(match, colors, ringColor) {
   return dot;
 }
 
+// Fills the panel under the chart with everything about one match.
 function showMatchDetail(panel, match, colors, ringColor) {
   panel.replaceChildren();
   panel.classList.remove("empty");
@@ -94,7 +82,7 @@ function showMatchDetail(panel, match, colors, ringColor) {
       column.append(makeEl("p", "detail-team", team));
       const names = scorersText(match, team);
       if (names.length === 0) column.append(makeEl("p", "detail-muted", "—"));
-      for (const line of names) column.append(makeEl("p", "detail-goal", `⚽ ${line}`));
+      for (const line of names) column.append(makeEl("p", "", `⚽ ${line}`));
       scorers.append(column);
     }
   }
@@ -103,25 +91,21 @@ function showMatchDetail(panel, match, colors, ringColor) {
 
 // Turns the matches into the three groups of dots Chart.js draws.
 // ringColorOf(match) gives the shootout winner's color, or null.
-function buildDatasets(matches, data, colors, ringColorOf) {
+function buildDatasets(matches, colors, ringColorOf) {
   const smallScreen = window.innerWidth < 600;
   const baseRadius = smallScreen ? 4 : 6;
   const growth = smallScreen ? 1.5 : 2; // extra radius per goal of margin
   // Each result has its own row: A's wins on top, draws in the middle, B's wins below.
   const rows = { a: 2, draw: 1, b: 0 };
-  const groups = {
-    a: { label: `${data.team_a.name} win`, points: [] },
-    draw: { label: "Draw", points: [] },
-    b: { label: `${data.team_b.name} win`, points: [] },
-  };
+  const points = { a: [], draw: [], b: [] };
   // A small up/down nudge so matches close in time don't hide each other.
   const nudges = [0, 0.2, -0.2, 0.1, -0.1, 0.3, -0.3];
 
   for (const match of matches) {
-    const group = groups[match.winner];
-    group.points.push({
+    const group = points[match.winner];
+    group.push({
       x: decimalYear(match.date),
-      y: rows[match.winner] + nudges[group.points.length % nudges.length],
+      y: rows[match.winner] + nudges[group.length % nudges.length],
       r: baseRadius + Math.min(match.margin, 6) * growth, // bigger margin, bigger dot
       ring: ringColorOf(match), // only set for matches that went to penalties
       match,
@@ -129,23 +113,19 @@ function buildDatasets(matches, data, colors, ringColorOf) {
   }
 
   return ["a", "draw", "b"].map((key) => ({
-    label: groups[key].label,
-    data: groups[key].points,
+    data: points[key],
     backgroundColor: colors[key] + "d9", // slightly see-through
     // Normally a thin dark ring separates overlapping dots. A match that went
     // to penalties gets a thick ring in the shootout winner's color instead.
-    borderColor: groups[key].points.map((point) => point.ring || COLORS.surface),
-    borderWidth: groups[key].points.map((point) => (point.ring ? 3 : 1.5)),
+    borderColor: points[key].map((point) => point.ring || COLORS.surface),
+    borderWidth: points[key].map((point) => (point.ring ? 3 : 1.5)),
     hoverBorderColor: COLORS.text,
     hoverBorderWidth: 2,
   }));
 }
 
-function renderExplore(container, data, teamColors) {
-  // The filter chips for this rivalry, chosen by the backend: World Cup and
-  // Friendlies always, plus the tournaments these two teams really met in.
-  const categories = data.categories;
-  const colors = teamColors; // { a, b, draw } - each team's own color
+// colors = { a, b, draw }: each team's own color (see colors.js).
+function renderExplore(container, data, colors) {
   const allMatches = data.matches;
   let activeFilter = "all";    // which tournament chip is on
   let activeDecade = null;     // e.g. 2000 when the Era Chart sent us here
@@ -156,57 +136,41 @@ function renderExplore(container, data, teamColors) {
 
   // --- Tabs ---
   const tabs = makeEl("div", "tabs");
-  const tabButtons = {
-    timeline: makeEl("button", "tab", "Match Timeline"),
-    era: makeEl("button", "tab", "Era Chart"),
-    stats: makeEl("button", "tab", "More Statistics"),
-  };
-  for (const [name, button] of Object.entries(tabButtons)) {
-    button.type = "button";
-    button.addEventListener("click", () => showTab(name));
-    tabs.append(button);
-  }
-
+  const tabButtons = {};
   // Each tab has its own panel; only one is visible at a time.
-  const panels = {
-    timeline: makeEl("div", "tab-panel"),
-    era: makeEl("div", "tab-panel"),
-    stats: makeEl("div", "tab-panel"),
-  };
-  const timelinePanel = panels.timeline;
+  const panels = {};
+  for (const [name, label] of [["timeline", "Match Timeline"], ["era", "Era Chart"], ["stats", "More Statistics"]]) {
+    tabButtons[name] = makeButton("tab", label, () => showTab(name));
+    tabs.append(tabButtons[name]);
+    panels[name] = makeEl("div");
+  }
 
   // --- Filter chips: "All" plus one per tournament ---
   const chips = makeEl("div", "chips");
   chips.setAttribute("role", "group");
   chips.setAttribute("aria-label", "Filter by tournament");
-  const chipList = [{ id: "all", label: "All" }, ...categories];
+  // The backend chose the chips for this rivalry and counted their matches:
+  // World Cup and Friendlies always, plus the tournaments these two really met in.
+  const chipList = [{ id: "all", label: "All", matches: allMatches.length }, ...data.categories];
   for (const category of chipList) {
-    const count = category.id === "all"
-      ? allMatches.length
-      : allMatches.filter((m) => m.category === category.id).length;
-    const chip = makeEl("button", "chip", `${category.label} `);
-    chip.type = "button";
-    chip.dataset.filter = category.id;
-    chip.append(makeEl("span", "chip-count", String(count)));
-    chip.disabled = count === 0; // nothing to show for this tournament
-    if (category.includes) chip.title = category.includes.join(", "); // what "Other" holds
-    chip.addEventListener("click", () => {
+    const chip = makeButton("chip", `${category.label} `, () => {
       activeFilter = category.id;
       update();
     });
+    chip.dataset.filter = category.id;
+    chip.append(makeEl("span", "chip-count", String(category.matches)));
+    chip.disabled = category.matches === 0; // nothing to show for this tournament
+    if (category.includes) chip.title = category.includes.join(", "); // what "Other" holds
     chips.append(chip);
   }
 
   // Shown only while the timeline is narrowed to one decade.
   const decadeFilter = makeEl("div", "decade-filter");
   const decadeText = makeEl("span", "decade-text");
-  const decadeReset = makeEl("button", "secondary", "✕ Show all years");
-  decadeReset.type = "button";
-  decadeReset.addEventListener("click", () => {
+  decadeFilter.append(decadeText, makeButton("secondary", "✕ Show all years", () => {
     activeDecade = null;
     update();
-  });
-  decadeFilter.append(decadeText, decadeReset);
+  }));
 
   const filterSummary = makeEl("p", "filter-summary");
 
@@ -214,9 +178,7 @@ function renderExplore(container, data, teamColors) {
   const legend = makeEl("div", "legend");
   for (const [key, label] of [["a", `${data.team_a.name} win`], ["draw", "Draw"], ["b", `${data.team_b.name} win`]]) {
     const item = makeEl("span", "legend-item");
-    const dot = makeEl("span", "dot");
-    dot.style.background = colors[key];
-    item.append(dot, label);
+    item.append(makeDot(colors[key]), label);
     legend.append(item);
   }
   // The shootout winner's color, for matches that went to penalties.
@@ -226,16 +188,16 @@ function renderExplore(container, data, teamColors) {
 
   if (allMatches.some((m) => m.shootout_winner)) {
     const item = makeEl("span", "legend-item");
-    const dot = makeEl("span", "dot pens");
-    dot.style.background = colors.draw;
+    const dot = makeDot(colors.draw);
+    dot.classList.add("pens");
     dot.style.borderColor = COLORS.text;
     item.append(dot, "Went to penalties (ring color = shootout winner)");
     legend.append(item);
   }
-  legend.append(makeEl("span", "legend-note", "Bigger dot = bigger goal margin"));
+  legend.append(makeEl("span", "", "Bigger dot = bigger goal margin"));
 
   const chartWrap = makeEl("div", "chart-wrap");
-  const canvas = document.createElement("canvas");
+  const canvas = makeEl("canvas");
   canvas.setAttribute("role", "img");
   chartWrap.append(canvas);
 
@@ -249,7 +211,7 @@ function renderExplore(container, data, teamColors) {
   tableScroll.append(table);
   tableBox.append(tableScroll);
 
-  timelinePanel.append(decadeFilter, filterSummary, legend, chartWrap, detail, tableBox);
+  panels.timeline.append(decadeFilter, filterSummary, legend, chartWrap, detail, tableBox);
   card.append(tabs, chips, panels.timeline, panels.era, panels.stats);
   container.append(card);
 
@@ -389,7 +351,7 @@ function renderExplore(container, data, teamColors) {
       const xAxis = timelineChart.options.scales.x;
       xAxis.min = activeDecade === null ? firstYear - 1 : activeDecade - 1;
       xAxis.max = activeDecade === null ? lastYear + 2 : activeDecade + 10;
-      timelineChart.data.datasets = buildDatasets(matches, data, colors, ringColorOf);
+      timelineChart.data.datasets = buildDatasets(matches, colors, ringColorOf);
       timelineChart.update();
       canvas.setAttribute("aria-label",
         `Timeline of ${matches.length} matches between ${data.team_a.name} and ${data.team_b.name}, ` +

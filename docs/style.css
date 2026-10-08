@@ -10,7 +10,6 @@
 :root {
   --bg: #04060c;
   --navy: #0a1b3d;
-  --surface: #081226;
   --text: #ffffff;
   --muted: #9db0d3;
   --accent: #ffffff;
@@ -1406,18 +1405,6 @@ button:disabled { cursor: not-allowed; opacity: 0.6; }
   white-space: nowrap;
 }
 .tab.active { color: var(--text); border-bottom-color: var(--accent); }
-.soon {
-  margin-left: 6px;
-  font-family: var(--font-body);
-  font-size: 0.6rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  border: 1px solid var(--border);
-  border-radius: 3px;
-  padding: 1px 5px;
-  vertical-align: middle;
-}
 
 .chips { display: flex; flex-wrap: wrap; gap: 8px; }
 .chip {

@@ -5,11 +5,9 @@
 // sends the name of an image file kept in docs/flags/ instead.
 
 function flagPlaceholder(teamName) {
-  const el = document.createElement("span");
-  el.className = "flag flag-placeholder";
+  const el = makeEl("span", "flag flag-placeholder", "⚽");
   el.setAttribute("role", "img");
   el.setAttribute("aria-label", `No flag available for ${teamName}`);
-  el.textContent = "⚽";
   return el;
 }
 
@@ -18,8 +16,7 @@ function createFlag(team) {
   if (!team || (!team.code && !team.flag_file)) {
     return flagPlaceholder(team ? team.name : "this team");
   }
-  const img = document.createElement("img");
-  img.className = "flag";
+  const img = makeEl("img", "flag");
   img.alt = `Flag of ${team.name}`;
   img.src = team.flag_file || `https://flagcdn.com/${team.code}.svg`;
   // If the image fails to load, swap in the placeholder.

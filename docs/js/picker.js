@@ -1,10 +1,5 @@
 // picker.js - the searchable team dropdown and the featured rivalry cards.
 
-// Lowercase and remove accents so "curacao" finds "Curaçao".
-function normalizeText(text) {
-  return text.trim().toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
-}
-
 // Teams whose name or former name matches what was typed.
 // Names that START with the text come first.
 function searchTeams(teams, text) {
@@ -67,20 +62,13 @@ function createTeamPicker(root, teams, onChoose) {
     results = searchTeams(teams, input.value);
     list.replaceChildren();
     if (results.length === 0) {
-      const empty = document.createElement("li");
-      empty.className = "combo-empty";
-      empty.textContent = teams.length ? "No team matches that" : "Teams couldn't be loaded";
-      list.append(empty);
+      list.append(makeEl("li", "combo-empty", teams.length ? "No team matches that" : "Teams couldn't be loaded"));
     }
     for (const { team, alias } of results) {
-      const li = document.createElement("li");
+      const li = makeEl("li");
       li.setAttribute("role", "option");
       li.append(createFlag(team), team.name);
-      if (alias) {
-        const note = document.createElement("small");
-        note.textContent = `also: ${alias}`;
-        li.append(note);
-      }
+      if (alias) li.append(makeEl("small", "", `also: ${alias}`));
       // mousedown (not click) so it fires before the input loses focus
       li.addEventListener("mousedown", (event) => {
         event.preventDefault();
@@ -132,32 +120,20 @@ function renderFeatured(container, rivalries, teams, onPick) {
   container.replaceChildren();
   for (const rivalry of rivalries) {
     // If the team list didn't load we still show the card, with placeholder flags.
-    const teamA = teams.find((t) => t.name === rivalry.a) || { name: rivalry.a, code: null };
-    const teamB = teams.find((t) => t.name === rivalry.b) || { name: rivalry.b, code: null };
+    const teamA = findTeam(teams, rivalry.a);
+    const teamB = findTeam(teams, rivalry.b);
 
-    const card = document.createElement("button");
-    card.type = "button";
-    card.className = "featured-card";
+    const card = makeButton("featured-card", "", () => onPick(rivalry.a, rivalry.b));
     // Each half of the card is tinted with that team's color.
     const teamColors = pickTeamColors(teamA, teamB);
     card.style.setProperty("--team-a", teamColors.a);
     card.style.setProperty("--team-b", teamColors.b);
 
-    const flags = document.createElement("span");
-    flags.className = "featured-flags";
+    const flags = makeEl("span", "featured-flags");
     flags.append(createFlag(teamA), makeEl("span", "featured-vs", "VS"), createFlag(teamB));
-
-    const title = document.createElement("span");
-    title.className = "featured-title";
-    title.textContent = `${teamA.name} vs ${teamB.name}`;
-
-    const tagline = document.createElement("span");
-    tagline.className = "featured-tagline";
-    tagline.textContent = rivalry.tagline;
-
-    card.append(flags, title);
-    if (rivalry.tagline) card.append(tagline); // only the named clásicos have one
-    card.addEventListener("click", () => onPick(rivalry.a, rivalry.b));
+    card.append(flags, makeEl("span", "featured-title", `${teamA.name} vs ${teamB.name}`));
+    // only the named clásicos have a tagline
+    if (rivalry.tagline) card.append(makeEl("span", "featured-tagline", rivalry.tagline));
     container.append(card);
   }
 }

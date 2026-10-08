@@ -19,29 +19,22 @@ function createUnusualSection(teams, onPickRivalry) {
   let started = false;           // have we loaded anything yet?
   let drawId = 0;                // lets slow answers know they are out of date
 
-  // A team as the flag helper wants it. The rankings include the flag code;
-  // the one-time list only has names, so look the team up.
-  const teamNamed = (name) => teams.find((t) => t.name === name) || { name, code: null };
-
   // --- The chips that switch between the lists ---
   for (const id of UNUSUAL.order) {
-    const chip = makeEl("button", "chip", UNUSUAL.labels[id] || id);
-    chip.type = "button";
-    chip.dataset.list = id;
-    chip.addEventListener("click", () => {
+    const chip = makeButton("chip", UNUSUAL.labels[id] || id, () => {
       active = id;
       draw();
     });
+    chip.dataset.list = id;
     chips.append(chip);
   }
 
-  function showError(err, retry) {
-    const message = makeEl("p", "recent-status recent-error", `${err.message} `);
-    const button = makeEl("button", "secondary", "Try again");
-    button.type = "button";
-    button.addEventListener("click", retry);
-    message.append(button);
-    body.replaceChildren(message);
+  // Press the active list's chip and show its description.
+  function markActive() {
+    for (const chip of chips.children) {
+      chip.setAttribute("aria-pressed", String(chip.dataset.list === active));
+    }
+    intro.textContent = UNUSUAL.descriptions[active] || "";
   }
 
   // ---------------------------------------------------------------------
@@ -50,8 +43,7 @@ function createUnusualSection(teams, onPickRivalry) {
 
   // One entry, as a big podium card or a row. Both are buttons.
   function buildEntry(entry, kind, index) {
-    const card = makeEl("button", `unusual-entry ${kind}`);
-    card.type = "button";
+    const card = makeButton(`unusual-entry ${kind}`, "", () => onPickRivalry(entry.team_a.name, entry.team_b.name));
     card.style.animationDelay = `${reducedMotion ? 0 : index * UNUSUAL.stagger}ms`;
     card.title = `Open ${entry.team_a.name} vs ${entry.team_b.name}`;
 
@@ -71,7 +63,6 @@ function createUnusualSection(teams, onPickRivalry) {
     info.append(makeEl("span", "unusual-title", entry.title), makeEl("span", "unusual-detail", entry.detail));
 
     card.append(makeEl("span", "unusual-rank", String(entry.rank)), flags, value, info);
-    card.addEventListener("click", () => onPickRivalry(entry.team_a.name, entry.team_b.name));
     return card;
   }
 
@@ -95,23 +86,22 @@ function createUnusualSection(teams, onPickRivalry) {
   // One-Time Rivalries: 5 at random + the searchable list of all of them
   // ---------------------------------------------------------------------
 
-  // One match between two teams that never met again.
+  // One match between two teams that never met again. (This list only has
+  // the teams' names, so their flags are looked up in the team list.)
   function buildMatchRow(match, index) {
-    const row = makeEl("button", "unusual-entry list-row match-row");
-    row.type = "button";
+    const row = makeButton("unusual-entry list-row match-row", "", () => onPickRivalry(match.home_team, match.away_team));
     row.style.animationDelay = `${reducedMotion ? 0 : Math.min(index, 8) * 40}ms`;
     row.title = `Open ${match.home_team} vs ${match.away_team}`;
 
     const flags = makeEl("span", "unusual-flags");
-    flags.append(createFlag(teamNamed(match.home_team)), createFlag(teamNamed(match.away_team)));
+    flags.append(createFlag(findTeam(teams, match.home_team)), createFlag(findTeam(teams, match.away_team)));
 
     const info = makeEl("span", "unusual-info");
     info.append(
-      makeEl("span", "unusual-title", `${match.home_team} ${match.home_score}–${match.away_score} ${match.away_team}`),
+      makeEl("span", "unusual-title", scoreLine(match)),
       makeEl("span", "unusual-detail", `${formatDate(match.date)} · ${match.tournament} · ${match.city}`)
     );
     row.append(flags, info);
-    row.addEventListener("click", () => onPickRivalry(match.home_team, match.away_team));
     return row;
   }
 
@@ -120,8 +110,7 @@ function createUnusualSection(teams, onPickRivalry) {
     const total = answer.one_time_count.toLocaleString("en-US");
 
     // --- 5 at random ---
-    const randomButton = makeEl("button", "primary unusual-random", `🎲 Show ${UNUSUAL.randomCount} random`);
-    randomButton.type = "button";
+    const randomButton = makeButton("primary unusual-random", `🎲 Show ${UNUSUAL.randomCount} random`, loadRandom);
     const randomList = makeEl("div", "unusual-list");
 
     async function loadRandom() {
@@ -136,20 +125,25 @@ function createUnusualSection(teams, onPickRivalry) {
       }
       randomButton.disabled = false;
     }
-    randomButton.addEventListener("click", loadRandom);
 
     // --- All of them, with a search box ---
-    const search = document.createElement("input");
+    const search = makeEl("input", "unusual-search");
     search.type = "search";
-    search.className = "unusual-search";
     search.placeholder = "Search a team…";
     search.setAttribute("aria-label", "Search the one-time rivalries by team");
     const count = makeEl("p", "unusual-count");
     const fullList = makeEl("div", "unusual-list");
-    const more = makeEl("button", "secondary", "Show more");
-    more.type = "button";
-    const less = makeEl("button", "secondary", "Show less");
-    less.type = "button";
+    const more = makeButton("secondary", "Show more", () => {
+      shown += UNUSUAL.listPageSize;
+      drawFullList();
+    });
+    // "Show less" takes away the rows the last "Show more" added.
+    const less = makeButton("secondary", "Show less", () => {
+      shown = Math.max(UNUSUAL.listPageSize, shown - UNUSUAL.listPageSize);
+      drawFullList();
+      // Keep the buttons in view: the list just got shorter above them.
+      moreLess.scrollIntoView({ behavior: "instant", block: "nearest" });
+    });
     const moreLess = makeEl("div", "unusual-more");
     moreLess.append(more, less);
     let shown = UNUSUAL.listPageSize; // how many rows are on screen
@@ -171,17 +165,6 @@ function createUnusualSection(teams, onPickRivalry) {
       shown = UNUSUAL.listPageSize; // a new search starts from the top
       drawFullList();
     });
-    more.addEventListener("click", () => {
-      shown += UNUSUAL.listPageSize;
-      drawFullList();
-    });
-    // "Show less" takes away the rows the last "Show more" added.
-    less.addEventListener("click", () => {
-      shown = Math.max(UNUSUAL.listPageSize, shown - UNUSUAL.listPageSize);
-      drawFullList();
-      // Keep the buttons in view: the list just got shorter above them.
-      moreLess.scrollIntoView({ behavior: "instant", block: "nearest" });
-    });
 
     async function loadFullList() {
       count.textContent = "Loading the full list…";
@@ -194,10 +177,7 @@ function createUnusualSection(teams, onPickRivalry) {
       } catch (err) {
         if (thisDraw !== drawId) return;
         count.textContent = `${err.message} `;
-        const retry = makeEl("button", "secondary", "Try again");
-        retry.type = "button";
-        retry.addEventListener("click", loadFullList);
-        count.append(retry);
+        count.append(makeButton("secondary", "Try again", loadFullList));
       }
     }
 
@@ -215,17 +195,14 @@ function createUnusualSection(teams, onPickRivalry) {
   async function draw() {
     const thisDraw = ++drawId;
     started = true;
-    for (const chip of chips.children) {
-      chip.setAttribute("aria-pressed", String(chip.dataset.list === active));
-    }
-    intro.textContent = UNUSUAL.descriptions[active] || "";
+    markActive();
 
     if (!answer) {
       body.replaceChildren(makeEl("p", "recent-status", "Loading…"));
       try {
         answer = await apiGet("/api/unusual");
       } catch (err) {
-        if (thisDraw === drawId) showError(err, draw);
+        if (thisDraw === drawId) body.replaceChildren(makeErrorLine("recent-status recent-error", err.message, draw));
         return;
       }
       if (thisDraw !== drawId) return;
@@ -243,8 +220,7 @@ function createUnusualSection(teams, onPickRivalry) {
 
   // Don't load anything until the visitor scrolls near the section: it is
   // at the bottom of the page and many visits never get there.
-  for (const chip of chips.children) chip.setAttribute("aria-pressed", String(chip.dataset.list === active));
-  intro.textContent = UNUSUAL.descriptions[active] || "";
+  markActive();
   if ("IntersectionObserver" in window) {
     const observer = new IntersectionObserver((entries) => {
       if (entries.some((entry) => entry.isIntersecting)) {

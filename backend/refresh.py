@@ -177,7 +177,6 @@ def _check():
         json.dump(new_etags, f)
     shutil.rmtree(DOWNLOAD_DIR, ignore_errors=True)
     INCOMING_DIR.rename(DOWNLOAD_DIR)
-    data.LOADED_FROM = DOWNLOAD_DIR
     _loaded_stamp = _saved_copy_stamp()
     unusual.reset()
 

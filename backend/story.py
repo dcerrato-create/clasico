@@ -71,12 +71,12 @@ _cache = _load_cache()
 
 
 def _cache_key(team_a, team_b, matches, lang):
-    # Alphabetical order, so both ways of picking the two teams share a story.
-    # The match count and latest date are part of the key, so a story is
-    # written again automatically when the dataset gets new matches.
-    first, second = sorted([team_a, team_b])
-    # STORY_VERSION changes when the prompt does, which also starts a fresh story.
-    return "|".join([first, second, lang, str(len(matches)), matches[-1]["date"], f"v{STORY_VERSION}"])
+    # The teams arrive in alphabetical order (app.py sorts them), so both ways
+    # of picking the two teams share a story. The match count and latest date
+    # are part of the key, so a story is written again automatically when the
+    # dataset gets new matches. STORY_VERSION changes when the prompt does,
+    # which also starts a fresh story.
+    return "|".join([team_a, team_b, lang, str(len(matches)), matches[-1]["date"], f"v{STORY_VERSION}"])
 
 
 def check_language(lang):
@@ -128,14 +128,13 @@ def build_facts(team_a, team_b, matches):
     same functions that feed the rest of the page."""
     a, b = team_a, team_b
     overview = data.overview(matches, today=date.today())
-    book = data.record_book(a, b, matches)
+    book = data.record_book(matches)
     shootouts = data.shootout_stats(a, b, matches)
 
     # Facts are given as plain values (not ready-made English phrases), so
     # the model has to write its own sentence in whichever language it uses.
     def day(iso_date):  # "2000-09-02" -> "2 September 2000"
-        d = date.fromisoformat(iso_date)
-        return f"{d.day} {d.strftime('%B %Y')}"
+        return data.format_date(iso_date, month="%B")
 
     def match_fact(match):
         if not match:
@@ -155,9 +154,6 @@ def build_facts(team_a, team_b, matches):
         return {"matches": record["matches"], f"{a} wins": record["a_wins"],
                 "draws": record["draws"], f"{b} wins": record["b_wins"]}
 
-    def biggest(short):  # find the full match behind a record-book entry
-        return short and next(m for m in matches if m["date"] == short["date"])
-
     decades = data.decade_records(matches, matches)
     return {
         "teams": [a, b],
@@ -167,8 +163,8 @@ def build_facts(team_a, team_b, matches):
         "goals": {a: overview["a_goals"], b: overview["b_goals"], "average_per_match": overview["goals_per_game"]},
         "first_meeting": match_fact(matches[0]),
         "last_meeting": match_fact(matches[-1]),
-        f"biggest {a} win": match_fact(biggest(book["biggest_a_win"])),
-        f"biggest {b} win": match_fact(biggest(book["biggest_b_win"])),
+        f"biggest {a} win": match_fact(data.biggest_win(matches, "a")),
+        f"biggest {b} win": match_fact(data.biggest_win(matches, "b")),
         "longest_streaks": {
             f"{a} winning streak": streak_fact(book["a_winning_streak"]),
             f"{b} winning streak": streak_fact(book["b_winning_streak"]),
@@ -191,7 +187,8 @@ def build_facts(team_a, team_b, matches):
 # ---------------------------------------------------------------------------
 
 def start_story(team_a, team_b, matches, lang, visitor):
-    """Start writing a story that is not in the cache.
+    """Start writing a story that is not in the cache. The teams (and
+    `matches`, seen from team_a's side) must be in alphabetical order.
 
     Makes the one call to OpenAI and returns (model name, source, pieces).
     `source` is the Wikipedia article used for the history ({"title", "url"})
@@ -211,18 +208,16 @@ def start_story(team_a, team_b, matches, lang, visitor):
         _check_rate_limit(visitor)
         _in_progress.add(key)
 
-    # The story is always written with the teams in the same (alphabetical)
-    # order, because both ways of picking them share one cached story.
-    first, second = sorted([team_a, team_b])
-    facts = json.dumps(build_facts(first, second, data.head_to_head(first, second)), ensure_ascii=False)
+    facts = json.dumps(build_facts(team_a, team_b, matches), ensure_ascii=False)
 
     # The rivalry's Wikipedia article, if it has one (None if not, or if
     # Wikipedia can't be reached: the story is then written without it).
-    article = wiki.find_rivalry_article(first, second)
+    article = wiki.find_rivalry_article(team_a, team_b)
     source = {"title": article["title"], "url": article["url"]} if article else None
     wikipedia = f'"{article["title"]}"\n{article["text"]}' if article else "none"
 
-    print(f"OpenAI call: new {STORY_LANGUAGES[lang]} story for {first} v {second} ({model})", flush=True)
+    # One line in the server log for every call that costs money.
+    print(f"OpenAI call: new {STORY_LANGUAGES[lang]} story for {team_a} v {team_b} ({model})", flush=True)
     try:
         # max_retries=0: exactly one call, never an automatic second try.
         client = openai.OpenAI(api_key=api_key, timeout=STORY_TIMEOUT_SECONDS, max_retries=0)

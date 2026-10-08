@@ -2,20 +2,6 @@
 // It first plays the full-screen clash (clash.js). When the big flags have
 // shrunk into this card, the numbers count up one after another.
 
-const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-
-function wait(ms) {
-  return new Promise((resolve) => setTimeout(resolve, reducedMotion ? 0 : ms));
-}
-
-// Small helper: make an element with a class and (optional) text.
-function makeEl(tag, className, text) {
-  const el = document.createElement(tag);
-  if (className) el.className = className;
-  if (text !== undefined) el.textContent = text;
-  return el;
-}
-
 // Animate a number from 0 up to target. Resolves when it finishes.
 function countUp(el, target, duration = 900) {
   return new Promise((resolve) => {
@@ -68,7 +54,7 @@ function buildRecordItem(kind, label) {
 // quick = true plays a short clash inside the card instead of the full-screen one.
 // onViewRecent(teamName) is called by the "recent games" buttons shown when
 // the two teams have never played each other.
-function renderReveal(container, data, teamColors, quick = false, onViewRecent = null) {
+function renderReveal(container, data, teamColors, quick, onViewRecent) {
   const { team_a: teamA, team_b: teamB, summary } = data;
 
   const card = makeEl("section", "card reveal");
@@ -108,18 +94,14 @@ function renderReveal(container, data, teamColors, quick = false, onViewRecent =
     card.append(note, hint);
 
     // Two buttons, one per team, that jump to that team's recent games.
-    if (onViewRecent) {
-      const buttons = makeEl("div", "never-met-buttons");
-      for (const team of [teamA, teamB]) {
-        const possessive = team.name.endsWith("s") ? `${team.name}'` : `${team.name}'s`;
-        const button = makeEl("button", "secondary", `View ${possessive} recent games`);
-        button.type = "button";
-        button.prepend(createFlag(team));
-        button.addEventListener("click", () => onViewRecent(team.name));
-        buttons.append(button);
-      }
-      card.append(buttons);
+    const buttons = makeEl("div", "never-met-buttons");
+    for (const team of [teamA, teamB]) {
+      const possessive = team.name.endsWith("s") ? `${team.name}'` : `${team.name}'s`;
+      const button = makeButton("secondary", `View ${possessive} recent games`, () => onViewRecent(team.name));
+      button.prepend(createFlag(team));
+      buttons.append(button);
     }
+    card.append(buttons);
     container.append(card);
     clashThenShow();
     return;
@@ -139,14 +121,7 @@ function renderReveal(container, data, teamColors, quick = false, onViewRecent =
   record.append(a.item, d.item, b.item);
 
   // A bar split in three, sized by the share of each result.
-  const bar = makeEl("div", "record-bar step");
-  bar.setAttribute("aria-hidden", "true");
-  for (const [kind, count] of [["a", summary.a_wins], ["d", summary.draws], ["b", summary.b_wins]]) {
-    if (count === 0) continue;
-    const segment = makeEl("span", `segment ${kind}`);
-    segment.style.flexGrow = count;
-    bar.append(segment);
-  }
+  const bar = makeRecordBar(summary, "step");
 
   const goals = makeEl("p", "goals step");
   const goalsNumber = makeEl("strong", "", "0");
@@ -155,8 +130,8 @@ function renderReveal(container, data, teamColors, quick = false, onViewRecent =
     ` total goals · ${teamA.name} ${summary.a_goals} – ${summary.b_goals} ${teamB.name}`
   );
 
-  const firstYear = summary.first_match.date.slice(0, 4);
-  const latestYear = summary.latest_match.date.slice(0, 4);
+  const firstYear = summary.first_date.slice(0, 4);
+  const latestYear = summary.latest_date.slice(0, 4);
   const extra = makeEl("p", "headline-extra step", `First meeting ${firstYear} · Latest ${latestYear}`);
 
   // A penalty shootout never changes the record: the match keeps its real
@@ -173,9 +148,7 @@ function renderReveal(container, data, teamColors, quick = false, onViewRecent =
       [teamColors.b, teamB.name, shootouts.b_wins],
     ]) {
       const item = makeEl("span", "penalties-team");
-      const dot = makeEl("span", "dot");
-      dot.style.background = color;
-      item.append(dot, `${name} won ${wins}`);
+      item.append(makeDot(color), `${name} won ${wins}`);
       penalties.append(item);
     }
     penalties.append(makeEl("span", "penalties-note", "Shootouts don't change the record: a drawn match still counts as a draw."));

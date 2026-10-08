@@ -48,15 +48,12 @@ function renderStory(container, data, { askFirst = false } = {}) {
   toggle.setAttribute("aria-label", "Story language");
   const buttons = {};
   for (const [lang, label, title] of [["en", "EN", "English"], ["es", "ES", "Español"]]) {
-    const button = makeEl("button", "", label);
-    button.type = "button";
-    button.title = title;
-    button.addEventListener("click", () => {
+    buttons[lang] = makeButton("", label, () => {
       storyLang = lang;
       load({ allowNew: true }); // the visitor asked for this language
     });
-    buttons[lang] = button;
-    toggle.append(button);
+    buttons[lang].title = title;
+    toggle.append(buttons[lang]);
   }
   head.append(heading, toggle);
 
@@ -88,9 +85,7 @@ function renderStory(container, data, { askFirst = false } = {}) {
   // Show a message in place of the story, with one button under it.
   function showMessage(message, buttonLabel, onClick, isError) {
     text.className = isError ? "story-text story-error" : "story-text story-offer";
-    const button = makeEl("button", isError ? "secondary" : "primary story-write", buttonLabel);
-    button.type = "button";
-    button.addEventListener("click", onClick);
+    const button = makeButton(isError ? "secondary" : "primary story-write", buttonLabel, onClick);
     text.replaceChildren(message ? `${message} ` : "", button);
     modelLabel.textContent = "";
     setToggle(true);

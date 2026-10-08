@@ -3,7 +3,6 @@
 // Everything the page currently knows.
 const state = {
   teams: [],       // [{ name, code, colors, aliases }] from /api/teams
-  rivalry: null,   // the last /api/rivalry answer
   requestId: 0,    // lets us ignore answers to old requests
   openedFromLink: false, // is the rivalry on screen the one from the page's address?
 };
@@ -31,7 +30,7 @@ let unusualSection; // "Unusual Games" (same reason)
 // and the chart both use the same colors.
 function applyColors() {
   const names = {
-    background: "--bg", navy: "--navy", surface: "--surface", text: "--text",
+    background: "--bg", navy: "--navy", text: "--text",
     muted: "--muted", accent: "--accent", draw: "--draw",
   };
   for (const [key, cssName] of Object.entries(names)) {
@@ -69,7 +68,6 @@ async function loadTeams() {
   dom.bannerRetry.disabled = false;
   renderFeatured(dom.featured, FEATURED_CLASICOS, state.teams, pickRivalry);
   renderFeatured(dom.fierce, FIERCE_RIVALRIES, state.teams, pickRivalry);
-  return state.teams.length > 0;
 }
 
 // Put two teams in the pickers and show their rivalry.
@@ -79,11 +77,11 @@ function pickRivalry(teamA, teamB) {
   showRivalry();
 }
 
-// Remember the matchup in the address bar so the page can be shared.
-function updateAddress(teamA, teamB) {
+// Change the address bar without reloading the page. A rivalry is kept
+// there (?a=...&b=...) so the page can be shared.
+function setAddress(address) {
   try {
-    const query = new URLSearchParams({ a: teamA, b: teamB });
-    history.replaceState(null, "", `?${query}`);
+    history.replaceState(null, "", address);
   } catch (err) {
     // Some browsers block this for local files. It's only a nicety.
   }
@@ -113,11 +111,10 @@ async function showRivalry() {
     const data = await apiGet("/api/rivalry", { team_a: teamA, team_b: teamB });
     if (requestId !== state.requestId) return; // a newer request replaced this one
 
-    state.rivalry = data;
     // The backend may correct the names (e.g. "usa" -> "United States").
     pickerA.setValue(data.team_a.name);
     pickerB.setValue(data.team_b.name);
-    updateAddress(data.team_a.name, data.team_b.name);
+    setAddress(`?${new URLSearchParams({ a: data.team_a.name, b: data.team_b.name })}`);
     renderRivalry(data);
   } catch (err) {
     if (requestId !== state.requestId) return;
@@ -139,7 +136,6 @@ function resetHome() {
   if (clash) clash.click(); // skip a clash animation that is still playing
 
   // The rivalry on screen
-  state.rivalry = null;
   removeTimelineChart();
   dom.result.hidden = true;
   dom.result.replaceChildren();
@@ -149,16 +145,11 @@ function resetHome() {
   clearMessage();
   dom.goButton.disabled = false;
   dom.goButton.textContent = "Show the rivalry";
-  // Recent Games per Country
-  if (recentSection) recentSection.reset();
-  if (unusualSection) unusualSection.reset();
+  // Recent Games per Country and Unusual Games
+  recentSection.reset();
+  unusualSection.reset();
 
-  // The address bar (removes ?a=...&b=...)
-  try {
-    history.replaceState(null, "", location.pathname);
-  } catch (err) {
-    // Some browsers block this for local files. It's only a nicety.
-  }
+  setAddress(location.pathname); // removes ?a=...&b=...
   window.scrollTo({ top: 0, behavior: "smooth" });
 }
 

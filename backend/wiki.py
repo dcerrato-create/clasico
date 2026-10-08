@@ -13,7 +13,6 @@ is written without it.
 """
 
 import json
-import os
 import threading
 from pathlib import Path
 
@@ -21,8 +20,7 @@ import httpx
 
 from config import WIKI_ARTICLE_MAX_CHARS, WIKI_TIMEOUT_SECONDS
 
-# Can be pointed somewhere else for testing (e.g. to simulate an outage).
-WIKI_API = os.environ.get("WIKIPEDIA_API_URL", "https://en.wikipedia.org/w/api.php")
+WIKI_API = "https://en.wikipedia.org/w/api.php"
 # Wikipedia asks every program to say who it is.
 USER_AGENT = "ClasicoApp/1.0 (student project for CMU 15-113; github.com/dcerrato-create)"
 
