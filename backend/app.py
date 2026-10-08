@@ -296,12 +296,17 @@ def ai_story():
             if hasattr(pieces, "close"):
                 pieces.close()
 
-    return Response(
+    response = Response(
         stream_with_context(send()),
         mimetype="application/x-ndjson",
         # Tell browsers and hosting proxies to pass each line on immediately.
         headers={"Cache-Control": "no-store", "X-Accel-Buffering": "no"},
     )
+    # However the answer ends (even if the visitor left before send() ran
+    # at all), the story is stopped and no longer marked "being written".
+    if hasattr(pieces, "close"):
+        response.call_on_close(pieces.close)
+    return response
 
 
 if __name__ == "__main__":

@@ -238,6 +238,12 @@ def start_story(team_a, team_b, matches, lang, visitor):
             raise _friendly_error(err, model)
         raise
 
+    def release():
+        # Closing the stream tells OpenAI to stop writing. Safe to call twice.
+        stream.close()
+        with _lock:
+            _in_progress.discard(key)
+
     def pieces():
         written = []
         finished = False
@@ -252,17 +258,32 @@ def start_story(team_a, team_b, matches, lang, visitor):
             raise _friendly_error(err, model)
         finally:
             # Runs when the story ends AND when the visitor leaves halfway.
-            # Closing the stream tells OpenAI to stop writing.
-            stream.close()
+            release()
             with _lock:
-                _in_progress.discard(key)
                 if finished and written:  # only complete stories are saved
                     _cache[key] = {"story": "".join(written).strip(), "model": model, "source": source}
                     CACHE_FILE.parent.mkdir(exist_ok=True)
                     with open(CACHE_FILE, "w", encoding="utf-8") as f:
                         json.dump(_cache, f, ensure_ascii=False, indent=1)
 
-    return model, source, pieces()
+    return model, source, _Pieces(pieces(), release)
+
+
+class _Pieces:
+    """The story's text, bit by bit. close() always stops the story and
+    un-marks it as "being written", even if the visitor left before the
+    first word was read (a plain generator would skip its clean-up then)."""
+
+    def __init__(self, text, release):
+        self._text = text
+        self._release = release
+
+    def __iter__(self):
+        return self._text
+
+    def close(self):
+        self._text.close()
+        self._release()
 
 
 def _friendly_error(err, model):
